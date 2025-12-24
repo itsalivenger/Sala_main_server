@@ -10,5 +10,7 @@ router.post('/verify', authController.verifyOtp);
 
 // Protected routes
 router.put('/profile', protect, authController.updateProfile);
+router.post('/phone-change/request', protect, authController.requestPhoneChange);
+router.post('/phone-change/verify', protect, authController.verifyPhoneChange);
 
 export default router;

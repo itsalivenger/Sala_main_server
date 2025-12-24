@@ -102,9 +102,8 @@ export const verifyOtp = async (req: Request, res: Response) => {
         user.otpExpires = undefined;
         user.isVerified = true;
 
-        if (user.status === 'Pending') {
-            user.status = 'Active';
-        }
+        // NOTE: We no longer auto-activate the user here. 
+        // Activation happens in updateProfile once they provide name/city.
 
         await user.save();
 
@@ -215,11 +214,19 @@ export const updateProfile = async (req: Request, res: Response) => {
             return;
         }
 
-        if (name) user.name = name;
-        if (city) user.city = city;
+        if (!name || !city || !name.trim() || !city.trim()) {
+            res.status(400).json({
+                success: false,
+                message: 'Le nom et la ville sont obligatoires.'
+            });
+            return;
+        }
 
-        // If they completed profile, ensure they are active
-        if (user.isVerified) {
+        user.name = name.trim();
+        user.city = city.trim();
+
+        // If they were pending, they are now active
+        if (user.status === 'Pending') {
             user.status = 'Active';
         }
 
@@ -238,6 +245,130 @@ export const updateProfile = async (req: Request, res: Response) => {
         });
     } catch (error) {
         console.error('Update profile error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
+
+/**
+ * @desc    Request phone number change
+ * @route   POST /api/client/auth/phone-change/request
+ * @access  Private
+ */
+export const requestPhoneChange = async (req: Request, res: Response) => {
+    try {
+        const { newPhoneNumber } = req.body;
+        const userId = (req as any).user.id;
+
+        if (!newPhoneNumber || !validatePhone(newPhoneNumber)) {
+            res.status(400).json({
+                success: false,
+                message: 'Veuillez fournir un numéro de téléphone valide (ex: 0612345678)'
+            });
+            return;
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+            return;
+        }
+
+        // Check if new phone number is already in use
+        const existingUser = await User.findOne({ phoneNumber: newPhoneNumber });
+        if (existingUser && existingUser._id.toString() !== userId) {
+            res.status(400).json({
+                success: false,
+                message: 'Ce numéro est déjà associé à un autre compte.'
+            });
+            return;
+        }
+
+        // Generate OTP
+        const otp = generateOTP();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        user.pendingPhoneNumber = newPhoneNumber;
+        user.phoneChangeOtp = otp;
+        user.phoneChangeOtpExpires = otpExpires;
+        await user.save();
+
+        // --- Twilio Placeholder ---
+        console.warn('[CONFIG] Twilio is not yet configured. Phone change OTP will use the mock code below.');
+        console.log(`[TWILIO MOCK] Sending Phone Change OTP ${otp} to ${newPhoneNumber}`);
+        // -------------------------
+
+        res.status(200).json({
+            success: true,
+            message: 'Code de vérification envoyé au nouveau numéro',
+            ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+        });
+    } catch (error) {
+        console.error('Request phone change error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
+
+/**
+ * @desc    Verify phone number change
+ * @route   POST /api/client/auth/phone-change/verify
+ * @access  Private
+ */
+export const verifyPhoneChange = async (req: Request, res: Response) => {
+    try {
+        const { newPhoneNumber, code } = req.body;
+        const userId = (req as any).user.id;
+
+        if (!newPhoneNumber || !code) {
+            res.status(400).json({ success: false, message: 'Numéro et code requis' });
+            return;
+        }
+
+        const user = await User.findById(userId).select('+phoneChangeOtp +phoneChangeOtpExpires');
+        if (!user) {
+            res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+            return;
+        }
+
+        // Verify OTP
+        if (
+            !user.phoneChangeOtp ||
+            !user.phoneChangeOtpExpires ||
+            user.phoneChangeOtp !== code ||
+            user.phoneChangeOtpExpires < new Date() ||
+            user.pendingPhoneNumber !== newPhoneNumber
+        ) {
+            res.status(400).json({ success: false, message: 'Code invalide ou expiré' });
+            return;
+        }
+
+        // Update phone number
+        user.phoneNumber = newPhoneNumber;
+        user.pendingPhoneNumber = undefined;
+        user.phoneChangeOtp = undefined;
+        user.phoneChangeOtpExpires = undefined;
+        await user.save();
+
+        // Generate new JWT with updated phone number
+        const token = jwt.sign(
+            { id: user._id, role: 'user' },
+            process.env.JWT_SECRET || 'secret',
+            { expiresIn: '30d' }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Numéro de téléphone mis à jour avec succès',
+            token,
+            user: {
+                id: user._id,
+                phoneNumber: user.phoneNumber,
+                name: user.name,
+                city: user.city,
+                status: user.status
+            }
+        });
+    } catch (error) {
+        console.error('Verify phone change error:', error);
         res.status(500).json({ success: false, message: 'Erreur Serveur' });
     }
 };

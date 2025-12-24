@@ -11,6 +11,7 @@ import authRoutes from './routes/admin/auth';
 
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
+import supportRoutes from './routes/client_app/supportRoutes';
 
 const app: Application = express();
 
@@ -28,6 +29,7 @@ app.use('/api/admin/auth', authRoutes);
 
 // Client App Routes
 app.use('/api/client/auth', clientAuthRoutes);
+app.use('/api/client/support', supportRoutes);
 
 // Basic Route for Health Check
 app.get('/', (req: Request, res: Response) => {

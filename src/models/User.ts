@@ -9,6 +9,9 @@ export interface IUser extends Document {
     otpExpires?: Date;
     isVerified: boolean;
     status: 'Active' | 'Inactive' | 'Pending';
+    pendingPhoneNumber?: string;
+    phoneChangeOtp?: string;
+    phoneChangeOtpExpires?: Date;
     notifications: Array<{
         title: string;
         message: string;
@@ -18,7 +21,13 @@ export interface IUser extends Document {
     }>;
     complaints: Array<{
         subject: string;
+        category: 'Réclamation' | 'Plaintes' | 'Questions' | 'Autres';
         status: 'Open' | 'Resolved' | 'In Progress';
+        requesterInfo: {
+            name: string;
+            phoneNumber: string;
+            city: string;
+        };
         messages: Array<{
             sender: 'User' | 'Support';
             text: string;
@@ -69,6 +78,18 @@ const UserSchema: Schema = new Schema(
             enum: ['Active', 'Inactive', 'Pending'],
             default: 'Pending',
         },
+        pendingPhoneNumber: {
+            type: String,
+            trim: true,
+        },
+        phoneChangeOtp: {
+            type: String,
+            select: false,
+        },
+        phoneChangeOtpExpires: {
+            type: Date,
+            select: false,
+        },
         notifications: [
             {
                 title: String,
@@ -81,7 +102,17 @@ const UserSchema: Schema = new Schema(
         complaints: [
             {
                 subject: String,
+                category: {
+                    type: String,
+                    enum: ['Réclamation', 'Plaintes', 'Questions', 'Autres'],
+                    default: 'Autres'
+                },
                 status: { type: String, enum: ['Open', 'Resolved', 'In Progress'], default: 'Open' },
+                requesterInfo: {
+                    name: String,
+                    phoneNumber: String,
+                    city: String,
+                },
                 messages: [
                     {
                         sender: { type: String, enum: ['User', 'Support'] },
