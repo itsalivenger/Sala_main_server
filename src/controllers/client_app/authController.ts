@@ -1,15 +1,16 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../../models/User';
+import Client from '../../models/Client';
+import smsService from '../../services/smsService';
 
 // Helper to generate 6-digit OTP
 const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Helper to validate Moroccan phone number
+// Helper to validate Moroccan phone number (format: 0[5-7]XXXXXXXX)
 const validatePhone = (phone: string) => {
-    const phoneRegex = /^(?:\+212|0)([5-7]\d{8})$/;
+    const phoneRegex = /^0[5-7]\d{8}$/;
     return phoneRegex.test(phone);
 };
 
@@ -35,7 +36,7 @@ export const login = async (req: Request, res: Response) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-        let user = await User.findOne({ phoneNumber });
+        let user = await Client.findOne({ phoneNumber });
 
         if (!user) {
             console.log(`[AUTH] Checking User: ${phoneNumber} -> NOT FOUND in database.`);
@@ -53,10 +54,8 @@ export const login = async (req: Request, res: Response) => {
         user.otpExpires = otpExpires;
         await user.save();
 
-        // --- Twilio Placeholder ---
-        console.warn('[CONFIG] Twilio is not yet configured. OTP verification will use the mock code below.');
-        console.log(`[TWILIO MOCK] Sending OTP ${otp} to ${phoneNumber}`);
-        // -------------------------
+        // Send OTP via SMS (Twilio or mock)
+        await smsService.sendOTP(phoneNumber, otp, 'Client Login');
 
         res.status(200).json({
             success: true,
@@ -85,7 +84,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
             return;
         }
 
-        const user = await User.findOne({
+        const user = await Client.findOne({
             phoneNumber,
             otp: code,
             otpExpires: { $gt: new Date() }
@@ -150,7 +149,7 @@ export const register = async (req: Request, res: Response) => {
             return;
         }
 
-        let user = await User.findOne({ phoneNumber });
+        let user = await Client.findOne({ phoneNumber });
 
         if (user) {
             console.log(`[AUTH] Checking User: ${phoneNumber} -> FOUND in database. Verified: ${user.isVerified}`);
@@ -171,7 +170,7 @@ export const register = async (req: Request, res: Response) => {
         const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
         if (!user) {
-            user = await User.create({
+            user = await Client.create({
                 phoneNumber,
                 otp,
                 otpExpires,
@@ -183,8 +182,8 @@ export const register = async (req: Request, res: Response) => {
             await user.save();
         }
 
-        console.warn('[CONFIG] Twilio is not yet configured (Registration).');
-        console.log(`[TWILIO MOCK] Sending Registration OTP ${otp} to ${phoneNumber}`);
+        // Send OTP via SMS (Twilio or mock)
+        await smsService.sendOTP(phoneNumber, otp, 'Client Registration');
 
         res.status(200).json({
             success: true,
@@ -207,7 +206,7 @@ export const updateProfile = async (req: Request, res: Response) => {
         const { name, city } = req.body;
         const userId = (req as any).user.id;
 
-        const user = await User.findById(userId);
+        const user = await Client.findById(userId);
 
         if (!user) {
             res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
@@ -267,14 +266,14 @@ export const requestPhoneChange = async (req: Request, res: Response) => {
             return;
         }
 
-        const user = await User.findById(userId);
+        const user = await Client.findById(userId);
         if (!user) {
             res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
             return;
         }
 
         // Check if new phone number is already in use
-        const existingUser = await User.findOne({ phoneNumber: newPhoneNumber });
+        const existingUser = await Client.findOne({ phoneNumber: newPhoneNumber });
         if (existingUser && existingUser._id.toString() !== userId) {
             res.status(400).json({
                 success: false,
@@ -292,10 +291,8 @@ export const requestPhoneChange = async (req: Request, res: Response) => {
         user.phoneChangeOtpExpires = otpExpires;
         await user.save();
 
-        // --- Twilio Placeholder ---
-        console.warn('[CONFIG] Twilio is not yet configured. Phone change OTP will use the mock code below.');
-        console.log(`[TWILIO MOCK] Sending Phone Change OTP ${otp} to ${newPhoneNumber}`);
-        // -------------------------
+        // Send OTP via SMS (Twilio or mock)
+        await smsService.sendOTP(newPhoneNumber, otp, 'Client Phone Change');
 
         res.status(200).json({
             success: true,
@@ -323,7 +320,7 @@ export const verifyPhoneChange = async (req: Request, res: Response) => {
             return;
         }
 
-        const user = await User.findById(userId).select('+phoneChangeOtp +phoneChangeOtpExpires');
+        const user = await Client.findById(userId).select('+phoneChangeOtp +phoneChangeOtpExpires');
         if (!user) {
             res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
             return;

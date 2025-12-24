@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import User from '../../models/User';
+import Client from '../../models/Client';
 
 /**
  * @desc    Create a new support reclamation
@@ -15,7 +15,7 @@ export const createReclamation = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: 'Le message est obligatoire.' });
         }
 
-        const user = await User.findById(userId);
+        const user = await Client.findById(userId);
         if (!user) {
             return res.status(404).json({ success: false, message: 'Utilisateur non trouvé.' });
         }
@@ -65,7 +65,7 @@ export const createReclamation = async (req: Request, res: Response) => {
 export const getReclamations = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
-        const user = await User.findById(userId).select('complaints');
+        const user = await Client.findById(userId).select('complaints');
 
         if (!user) {
             return res.status(404).json({ success: false, message: 'Utilisateur non trouvé.' });
@@ -101,7 +101,7 @@ export const sendReclamationMessage = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: 'Le message est vide.' });
         }
 
-        const user = await User.findById(userId);
+        const user = await Client.findById(userId);
         if (!user) {
             return res.status(404).json({ success: false, message: 'Utilisateur non trouvé.' });
         }

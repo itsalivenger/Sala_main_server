@@ -13,6 +13,9 @@ import authRoutes from './routes/admin/auth';
 import clientAuthRoutes from './routes/client_app/auth';
 import supportRoutes from './routes/client_app/supportRoutes';
 
+// Livreur App Routes
+import livreurAuthRoutes from './routes/livreur/auth';
+
 const app: Application = express();
 
 // Middleware
@@ -30,6 +33,9 @@ app.use('/api/admin/auth', authRoutes);
 // Client App Routes
 app.use('/api/client/auth', clientAuthRoutes);
 app.use('/api/client/support', supportRoutes);
+
+// Livreur App Routes
+app.use('/api/livreur/auth', livreurAuthRoutes);
 
 // Basic Route for Health Check
 app.get('/', (req: Request, res: Response) => {
