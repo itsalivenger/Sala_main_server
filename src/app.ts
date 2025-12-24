@@ -9,6 +9,9 @@ import newsletterRoutes from './routes/admin/newsletter';
 import adminAccountsRoutes from './routes/admin/admins';
 import authRoutes from './routes/admin/auth';
 
+// Client App Routes
+import clientAuthRoutes from './routes/client_app/auth';
+
 const app: Application = express();
 
 // Middleware
@@ -22,6 +25,9 @@ app.use(morgan('dev'));
 app.use('/api/admin/newsletter', newsletterRoutes);
 app.use('/api/admin/admins', adminAccountsRoutes);
 app.use('/api/admin/auth', authRoutes);
+
+// Client App Routes
+app.use('/api/client/auth', clientAuthRoutes);
 
 // Basic Route for Health Check
 app.get('/', (req: Request, res: Response) => {
