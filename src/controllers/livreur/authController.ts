@@ -453,3 +453,209 @@ export const updateSelfie = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur Serveur' });
     }
 };
+
+/**
+ * @desc    Get Livreur Profile
+ * @route   GET /api/livreur/auth/profile
+ * @access  Private
+ */
+export const getProfile = async (req: Request, res: Response) => {
+    try {
+        const livreurId = (req as any).user.id;
+
+        const livreur = await Livreur.findById(livreurId);
+
+        if (!livreur) {
+            res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            livreur: {
+                id: livreur._id,
+                phoneNumber: livreur.phoneNumber,
+                name: livreur.name,
+                city: livreur.city,
+                email: livreur.email,
+                dateOfBirth: livreur.dateOfBirth,
+                address: livreur.address,
+                status: livreur.status,
+                registrationStep: livreur.registrationStep,
+                vehicle: livreur.vehicle,
+                documents: livreur.documents,
+                selfie: livreur.selfie,
+            }
+        });
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
+
+/**
+ * @desc    Get All Complaints for Livreur
+ * @route   GET /api/livreur/auth/complaints
+ * @access  Private
+ */
+export const getComplaints = async (req: Request, res: Response) => {
+    try {
+        const livreurId = (req as any).user.id;
+
+        const livreur = await Livreur.findById(livreurId);
+
+        if (!livreur) {
+            res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            complaints: livreur.complaints || []
+        });
+    } catch (error) {
+        console.error('Get complaints error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
+
+/**
+ * @desc    Create New Complaint
+ * @route   POST /api/livreur/auth/complaints
+ * @access  Private
+ */
+export const createComplaint = async (req: Request, res: Response) => {
+    try {
+        const { subject, category, message } = req.body;
+        const livreurId = (req as any).user.id;
+
+        if (!subject || !category || !message) {
+            res.status(400).json({ success: false, message: 'Sujet, catégorie et message requis' });
+            return;
+        }
+
+        const livreur = await Livreur.findById(livreurId);
+
+        if (!livreur) {
+            res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+            return;
+        }
+
+        const newComplaint = {
+            subject: subject.trim(),
+            category,
+            status: 'Open',
+            requesterInfo: {
+                name: livreur.name || 'Non renseigné',
+                phoneNumber: livreur.phoneNumber,
+                city: livreur.city || 'Non renseigné'
+            },
+            messages: [{
+                sender: 'User',
+                text: message.trim(),
+                createdAt: new Date()
+            }],
+            createdAt: new Date()
+        };
+
+        if (!livreur.complaints) {
+            livreur.complaints = [];
+        }
+
+        livreur.complaints.push(newComplaint as any);
+        await livreur.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Réclamation créée avec succès',
+            complaint: newComplaint
+        });
+    } catch (error) {
+        console.error('Create complaint error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
+
+/**
+ * @desc    Get Complaint by ID
+ * @route   GET /api/livreur/auth/complaints/:id
+ * @access  Private
+ */
+export const getComplaintById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const livreurId = (req as any).user.id;
+
+        const livreur = await Livreur.findById(livreurId);
+
+        if (!livreur) {
+            res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+            return;
+        }
+
+        const complaint = livreur.complaints?.find((c: any) => c._id.toString() === id);
+
+        if (!complaint) {
+            res.status(404).json({ success: false, message: 'Réclamation non trouvée' });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            complaint
+        });
+    } catch (error) {
+        console.error('Get complaint by ID error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
+
+/**
+ * @desc    Add Message to Complaint
+ * @route   POST /api/livreur/auth/complaints/:id/messages
+ * @access  Private
+ */
+export const addComplaintMessage = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { text } = req.body;
+        const livreurId = (req as any).user.id;
+
+        if (!text || !text.trim()) {
+            res.status(400).json({ success: false, message: 'Message requis' });
+            return;
+        }
+
+        const livreur = await Livreur.findById(livreurId);
+
+        if (!livreur) {
+            res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+            return;
+        }
+
+        const complaint = livreur.complaints?.find((c: any) => c._id.toString() === id);
+
+        if (!complaint) {
+            res.status(404).json({ success: false, message: 'Réclamation non trouvée' });
+            return;
+        }
+
+        const newMessage = {
+            sender: 'User',
+            text: text.trim(),
+            createdAt: new Date()
+        };
+
+        complaint.messages.push(newMessage as any);
+        await livreur.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Message ajouté',
+            newMessage
+        });
+    } catch (error) {
+        console.error('Add complaint message error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
