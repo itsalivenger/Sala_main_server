@@ -75,7 +75,7 @@ export interface ILivreur extends Document {
     // Support/Complaints
     complaints: Array<{
         subject: string;
-        category: 'Réclamation' | 'Plaintes' | 'Questions' | 'Autres';
+        category: 'Réclamation' | 'Question' | 'Autres';
         status: 'Open' | 'Resolved' | 'In Progress';
         requesterInfo: {
             name: string;
@@ -209,7 +209,7 @@ const LivreurSchema: Schema = new Schema(
                 subject: String,
                 category: {
                     type: String,
-                    enum: ['Réclamation', 'Plaintes', 'Questions', 'Autres'],
+                    enum: ['Réclamation', 'Question', 'Autres'],
                     default: 'Autres'
                 },
                 status: { type: String, enum: ['Open', 'Resolved', 'In Progress'], default: 'Open' },
