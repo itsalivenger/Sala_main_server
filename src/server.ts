@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import app from './app';
-
 dotenv.config();
+
+import mongoose from 'mongoose';
+import app from './app';
 
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;

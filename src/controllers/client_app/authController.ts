@@ -107,9 +107,11 @@ export const verifyOtp = async (req: Request, res: Response) => {
         await user.save();
 
         // Generate JWT
+        const secret = process.env.JWT_SECRET || 'secret';
+        console.log(`[AUTH] Signing token with secret: ${secret.substring(0, 2)}...${secret.substring(secret.length - 2)} (Length: ${secret.length})`);
         const token = jwt.sign(
             { id: user._id, role: 'user' },
-            process.env.JWT_SECRET || 'secret',
+            secret,
             { expiresIn: '30d' }
         );
 
