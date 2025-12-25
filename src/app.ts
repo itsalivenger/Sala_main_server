@@ -2,11 +2,15 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 
 
 // Route Imports
 import newsletterRoutes from './routes/admin/newsletter';
 import adminAccountsRoutes from './routes/admin/admins';
+import adminComplaintsRoutes from './routes/admin/complaints';
+import adminClientsRoutes from './routes/admin/clients';
+import adminLivreursRoutes from './routes/admin/livreurs';
 import authRoutes from './routes/admin/auth';
 
 // Client App Routes
@@ -21,13 +25,22 @@ const app: Application = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
-app.use(helmet());
+app.use(cookieParser());
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+}));
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(morgan('dev'));
 
 // Scoped Admin Routes (moved to main_server)
 app.use('/api/admin/newsletter', newsletterRoutes);
 app.use('/api/admin/admins', adminAccountsRoutes);
+app.use('/api/admin/complaints', adminComplaintsRoutes);
+app.use('/api/admin/clients', adminClientsRoutes);
+app.use('/api/admin/livreurs', adminLivreursRoutes);
 app.use('/api/admin/auth', authRoutes);
 
 // Client App Routes

@@ -7,7 +7,8 @@ export interface IClient extends Document {
     otp?: string;
     otpExpires?: Date;
     isVerified: boolean;
-    status: 'Active' | 'Inactive' | 'Pending';
+    status: 'Active' | 'Inactive' | 'Pending' | 'Suspended';
+    lastLogin?: Date;
     pendingPhoneNumber?: string;
     phoneChangeOtp?: string;
     phoneChangeOtpExpires?: Date;
@@ -69,8 +70,11 @@ const ClientSchema: Schema = new Schema(
         },
         status: {
             type: String,
-            enum: ['Active', 'Inactive', 'Pending'],
+            enum: ['Active', 'Inactive', 'Pending', 'Suspended'],
             default: 'Pending',
+        },
+        lastLogin: {
+            type: Date,
         },
         pendingPhoneNumber: {
             type: String,
