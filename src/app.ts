@@ -12,6 +12,7 @@ import adminComplaintsRoutes from './routes/admin/complaints';
 import adminClientsRoutes from './routes/admin/clients';
 import adminLivreursRoutes from './routes/admin/livreurs';
 import authRoutes from './routes/admin/auth';
+import settingsRoutes from './routes/admin/settings';
 
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
@@ -42,6 +43,7 @@ app.use('/api/admin/complaints', adminComplaintsRoutes);
 app.use('/api/admin/clients', adminClientsRoutes);
 app.use('/api/admin/livreurs', adminLivreursRoutes);
 app.use('/api/admin/auth', authRoutes);
+app.use('/api/admin/settings', settingsRoutes);
 
 // Client App Routes
 app.use('/api/client/auth', clientAuthRoutes);
