@@ -35,8 +35,12 @@ export const getOrders = async (req: Request, res: Response) => {
         // Filters
         if (status) query.status = status;
         if (paymentStatus) query.paymentStatus = paymentStatus;
-        if (client) query.clientId = new mongoose.Types.ObjectId(client as string);
-        if (livreur) query.livreurId = new mongoose.Types.ObjectId(livreur as string);
+        if (client && mongoose.Types.ObjectId.isValid(client as string)) {
+            query.clientId = new mongoose.Types.ObjectId(client as string);
+        }
+        if (livreur && mongoose.Types.ObjectId.isValid(livreur as string)) {
+            query.livreurId = new mongoose.Types.ObjectId(livreur as string);
+        }
         if (city) query['pickupLocation.address'] = { $regex: city, $options: 'i' }; // Simple regex for now
 
         // Date Range
