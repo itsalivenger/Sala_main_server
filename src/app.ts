@@ -44,8 +44,14 @@ app.use('/api/admin/clients', adminClientsRoutes);
 app.use('/api/admin/livreurs', adminLivreursRoutes);
 app.use('/api/admin/auth', authRoutes);
 app.use('/api/admin/settings', settingsRoutes);
+import orderRoutes from './routes/admin/orders';
+app.use('/api/admin/orders', orderRoutes);
 import uploadRoutes from './routes/admin/upload';
 app.use('/api/admin/upload', uploadRoutes);
+import cmsRoutes from './routes/admin/cms';
+app.use('/api/admin/cms', cmsRoutes);
+import dashboardRoutes from './routes/admin/dashboard';
+app.use('/api/admin/dashboard', dashboardRoutes);
 
 // Static files for uploads
 import path from 'path';

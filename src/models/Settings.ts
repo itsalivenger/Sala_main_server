@@ -33,7 +33,10 @@ const SettingsSchema: Schema = new Schema(
         currency: { type: String, default: 'MAD' },
         maintenanceMode: { type: Boolean, default: false },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+        collection: 'Settings'
+    }
 );
 
 export default mongoose.model<ISettings>('Settings', SettingsSchema);

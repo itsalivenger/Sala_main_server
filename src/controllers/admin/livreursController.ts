@@ -56,8 +56,9 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
         const orders = await Order.find({ livreurId: id }).sort({ createdAt: -1 }).lean();
 
         // Calculate Performance
-        const completedOrders = orders.filter(o => o.status === 'Delivered').length;
-        const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length;
+        // Calculate Performance
+        const completedOrders = orders.filter(o => o.status === 'DELIVERED').length;
+        const cancelledOrders = orders.filter(o => ['CANCELLED_CLIENT', 'CANCELLED_ADMIN'].includes(o.status)).length;
         const totalOrders = orders.length;
         const successRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
 
@@ -65,9 +66,9 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
         let totalTime = 0;
         let deliveredCount = 0;
         orders.forEach(o => {
-            if (o.status === 'Delivered') {
-                const pickedUp = o.timeline.find(t => t.status === 'Picked Up')?.timestamp;
-                const delivered = o.timeline.find(t => t.status === 'Delivered')?.timestamp;
+            if (o.status === 'DELIVERED') {
+                const pickedUp = o.timeline.find(t => t.status === 'PICKED_UP')?.timestamp;
+                const delivered = o.timeline.find(t => t.status === 'DELIVERED')?.timestamp;
                 if (pickedUp && delivered) {
                     totalTime += (new Date(delivered).getTime() - new Date(pickedUp).getTime());
                     deliveredCount++;
