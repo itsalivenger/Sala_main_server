@@ -18,7 +18,6 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     try {
         const secret = process.env.JWT_SECRET || 'secret';
-        console.log(`[AUTH_MIDDLEWARE] Verifying token with secret: ${secret.substring(0, 2)}...${secret.substring(secret.length - 2)} (Length: ${secret.length})`);
         const decoded = jwt.verify(token, secret) as any;
         (req as any).user = decoded;
         next();

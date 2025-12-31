@@ -44,6 +44,12 @@ app.use('/api/admin/clients', adminClientsRoutes);
 app.use('/api/admin/livreurs', adminLivreursRoutes);
 app.use('/api/admin/auth', authRoutes);
 app.use('/api/admin/settings', settingsRoutes);
+import uploadRoutes from './routes/admin/upload';
+app.use('/api/admin/upload', uploadRoutes);
+
+// Static files for uploads
+import path from 'path';
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
 // Client App Routes
 app.use('/api/client/auth', clientAuthRoutes);
