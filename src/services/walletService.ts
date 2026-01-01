@@ -48,7 +48,7 @@ class WalletService {
         try {
             const order = await Order.findById(orderId).session(session);
             if (!order) throw new Error('Order not found');
-            if (order.status !== 'Completed') throw new Error('Order is not completed');
+            if (order.status !== 'DELIVERED') throw new Error('Order is not completed');
             if (!order.livreurId) throw new Error('No livreur assigned to this order');
 
             // Check if payout already exists for this order
@@ -63,7 +63,7 @@ class WalletService {
             const settings = await this.getPlatformSettings();
 
             // Calculation logic
-            const totalDeliveryPrice = order.totalPrice; // Basic assumption: order price = delivery price for now
+            const totalDeliveryPrice = order.pricing.total; // Basic assumption: order price = delivery price for now
             const platformMargin = Math.round((totalDeliveryPrice * settings.platform_margin_percentage) / 100);
             const netPayout = totalDeliveryPrice - platformMargin;
 

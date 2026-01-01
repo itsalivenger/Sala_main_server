@@ -7,7 +7,15 @@ export interface ILivreur extends Document {
     otp?: string;
     otpExpires?: Date;
     isVerified: boolean;
-    status: 'Pending' | 'Active' | 'Inactive' | 'Suspended';
+    status: 'Pending' | 'Active' | 'Inactive' | 'Suspended' | 'Approved';
+    walletBalance: number;
+    isOnline: boolean;
+    lastLocation?: {
+        lat: number;
+        lng: number;
+        timestamp: Date;
+    };
+    rejectionReason?: string;
 
     // Registration workflow fields
     registrationStep: 'phone_verification' | 'basic_info' | 'documents' | 'vehicle_photos' | 'vehicle_papers' | 'selfie' | 'completed';
@@ -137,9 +145,23 @@ const LivreurSchema: Schema = new Schema(
         },
         status: {
             type: String,
-            enum: ['Pending', 'Active', 'Inactive', 'Suspended'],
+            enum: ['Pending', 'Active', 'Inactive', 'Suspended', 'Approved'],
             default: 'Pending',
         },
+        walletBalance: {
+            type: Number,
+            default: 0,
+        },
+        isOnline: {
+            type: Boolean,
+            default: false,
+        },
+        lastLocation: {
+            lat: Number,
+            lng: Number,
+            timestamp: Date,
+        },
+        rejectionReason: String,
         registrationStep: {
             type: String,
             enum: ['phone_verification', 'basic_info', 'documents', 'vehicle_photos', 'vehicle_papers', 'selfie', 'completed'],

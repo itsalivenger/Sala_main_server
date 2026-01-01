@@ -31,6 +31,15 @@ export const login = async (req: Request, res: Response) => {
             { expiresIn: '24h' }
         );
 
+        // Set HttpOnly Cookie
+        res.cookie('admin_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            path: '/'
+        });
+
         res.json({
             message: 'Connexion réussie',
             token,
@@ -48,5 +57,11 @@ export const login = async (req: Request, res: Response) => {
 
 // Logout
 export const logout = async (req: Request, res: Response) => {
+    res.clearCookie('admin_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+    });
     res.json({ message: 'Déconnexion réussie' });
 };
