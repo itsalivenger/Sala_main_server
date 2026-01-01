@@ -8,6 +8,7 @@ import morgan from 'morgan';
 import newsletterRoutes from './routes/admin/newsletter';
 import adminAccountsRoutes from './routes/admin/admins';
 import authRoutes from './routes/admin/auth';
+import adminWalletRoutes from './routes/admin/wallet';
 
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
@@ -15,6 +16,7 @@ import supportRoutes from './routes/client_app/supportRoutes';
 
 // Livreur App Routes
 import livreurAuthRoutes from './routes/livreur/auth';
+import livreurWalletRoutes from './routes/livreur/wallet';
 
 const app: Application = express();
 
@@ -29,6 +31,7 @@ app.use(morgan('dev'));
 app.use('/api/admin/newsletter', newsletterRoutes);
 app.use('/api/admin/admins', adminAccountsRoutes);
 app.use('/api/admin/auth', authRoutes);
+app.use('/api/admin/wallet', adminWalletRoutes);
 
 // Client App Routes
 app.use('/api/client/auth', clientAuthRoutes);
@@ -36,6 +39,7 @@ app.use('/api/client/support', supportRoutes);
 
 // Livreur App Routes
 app.use('/api/livreur/auth', livreurAuthRoutes);
+app.use('/api/livreur/wallet', livreurWalletRoutes);
 
 // Basic Route for Health Check
 app.get('/', (req: Request, res: Response) => {

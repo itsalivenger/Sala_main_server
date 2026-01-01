@@ -226,17 +226,11 @@ export const updateBasicInfo = async (req: Request, res: Response) => {
         if (dateOfBirth) livreur.dateOfBirth = new Date(dateOfBirth);
         if (address) livreur.address = address.trim();
 
-        // Update Vehicle Info
-        if (vehicleType || vehicleModel) {
-            if (!livreur.vehicle) {
-                livreur.vehicle = {} as any;
-            }
-            if (vehicleType) livreur.vehicle.type = vehicleType;
-            if (vehicleModel) livreur.vehicle.model = vehicleModel;
-        }
+        if (vehicleType) livreur.set('vehicle.type', vehicleType);
+        if (vehicleModel) livreur.set('vehicle.model', vehicleModel);
 
         // Progress registration step
-        if (livreur.registrationStep === 'phone_verification') {
+        if (livreur.registrationStep === 'phone_verification' && livreur.name && livreur.city) {
             livreur.registrationStep = 'basic_info';
         }
 
