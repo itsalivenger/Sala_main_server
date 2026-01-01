@@ -17,6 +17,8 @@ import settingsRoutes from './routes/admin/settings';
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
 import supportRoutes from './routes/client_app/supportRoutes';
+import catalogRoutes from './routes/client_app/catalog';
+import clientOrderRoutes from './routes/client_app/orders';
 
 // Livreur App Routes
 import livreurAuthRoutes from './routes/livreur/auth';
@@ -28,7 +30,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: '*',
     credentials: true,
 }));
 app.use(helmet({
@@ -60,6 +62,8 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')
 // Client App Routes
 app.use('/api/client/auth', clientAuthRoutes);
 app.use('/api/client/support', supportRoutes);
+app.use('/api/client/catalog', catalogRoutes);
+app.use('/api/client/orders', clientOrderRoutes);
 
 // Livreur App Routes
 app.use('/api/livreur/auth', livreurAuthRoutes);

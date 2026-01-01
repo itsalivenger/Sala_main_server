@@ -20,8 +20,8 @@ const startServer = async () => {
         });
         console.log(`✅ Connected to MongoDB (Database: ${dbName})`);
 
-        app.listen(PORT, () => {
-            console.log(`🚀 main_server running on port ${PORT}`);
+        app.listen(Number(PORT), '0.0.0.0', () => {
+            console.log(`🚀 main_server running on port ${PORT} (accessible at http://${process.env.LOCAL_IP || '0.0.0.0'}:${PORT})`);
         });
 
     } catch (error) {
