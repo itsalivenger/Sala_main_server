@@ -44,6 +44,24 @@ export interface IOrder extends Document {
     paymentMethod: 'Cash' | 'Card' | 'Wallet';
     providerTransactionId?: string;
 
+    // Proof of Delivery
+    proofOfDelivery?: {
+        photos: string[];
+        signature?: string;
+        notes?: string;
+        otp?: string;
+        timestamp?: Date;
+    };
+
+    // Cancellation
+    cancellation?: {
+        reason: string;
+        details?: string;
+        penalty: number;
+        cancelledBy: 'livreur' | 'admin' | 'customer';
+        timestamp: Date;
+    };
+
     // Timeline & Audit
     timeline: Array<{
         status: string;
@@ -133,6 +151,25 @@ const OrderSchema: Schema = new Schema(
             default: 'Cash'
         },
         providerTransactionId: String,
+
+        proofOfDelivery: {
+            photos: [String],
+            signature: String,
+            notes: String,
+            otp: String,
+            timestamp: Date
+        },
+
+        cancellation: {
+            reason: String,
+            details: String,
+            penalty: { type: Number, default: 0 },
+            cancelledBy: {
+                type: String,
+                enum: ['livreur', 'admin', 'customer']
+            },
+            timestamp: Date
+        },
 
         timeline: [
             {

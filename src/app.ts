@@ -24,6 +24,8 @@ import clientOrderRoutes from './routes/client_app/orders';
 // Livreur App Routes
 import livreurAuthRoutes from './routes/livreur/auth';
 import livreurWalletRoutes from './routes/livreur/wallet';
+import livreurOrdersRoutes from './routes/livreur/orders';
+import livreurAvailabilityRoutes from './routes/livreur/availability';
 
 const app: Application = express();
 
@@ -71,6 +73,8 @@ app.use('/api/client/orders', clientOrderRoutes);
 // Livreur App Routes
 app.use('/api/livreur/auth', livreurAuthRoutes);
 app.use('/api/livreur/wallet', livreurWalletRoutes);
+app.use('/api/livreur/orders', livreurOrdersRoutes);
+app.use('/api/livreur/availability', livreurAvailabilityRoutes);
 
 // Basic Route for Health Check
 app.get('/', (req: Request, res: Response) => {
