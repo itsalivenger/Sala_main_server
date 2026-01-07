@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Subscriber from '../../models/Subscriber';
-import nodemailer from 'nodemailer';
+import mailService from '../../services/mailService';
 
 // Subscribe to newsletter (Public)
 export const subscribe = async (req: Request, res: Response) => {
@@ -71,22 +71,9 @@ export const sendNewsletter = async (req: Request, res: Response) => {
 
         const emails = subscribers.map(s => s.email);
 
-        // Configure Nodemailer (Example with environment variables)
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: Number(process.env.EMAIL_PORT) || 587,
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
-
-        // Loop through and send (or use Bcc for small lists)
-        // For production with many subscribers, use a queue like BullMQ or a service like AWS SES/SendGrid
-        const mailOptions = {
-            from: `"SALA Platform" <${process.env.EMAIL_USER}>`,
-            bcc: emails, // Using BCC to send to all at once for simplicity in this version
+        // Send via MailService (which handles branding and no-reply headers)
+        const success = await mailService.sendMail({
+            bcc: emails,
             subject: subject,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
@@ -102,13 +89,15 @@ export const sendNewsletter = async (req: Request, res: Response) => {
                     </div>
                 </div>
             `,
-        };
+        });
 
-        await transporter.sendMail(mailOptions);
+        if (!success) {
+            throw new Error('MailService failed to send broadcast');
+        }
 
         res.json({ message: `Newsletter envoyée avec succès à ${emails.length} abonnés.` });
     } catch (error: any) {
-        console.error('Email Send Error:', error);
+        console.error('Newsletter Broadcast Error:', error);
         res.status(500).json({ error: 'Échec de l\'envoi de la newsletter. Vérifiez les paramètres SMTP.' });
     }
 };

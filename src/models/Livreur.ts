@@ -97,6 +97,14 @@ export interface ILivreur extends Document {
         }>;
         createdAt: Date;
     }>;
+    reviews: Array<{
+        clientId: mongoose.Types.ObjectId;
+        clientName: string;
+        rating: number;
+        comment?: string;
+        createdAt: Date;
+    }>;
+    averageRating: number;
 
     createdAt: Date;
     updatedAt: Date;
@@ -250,6 +258,16 @@ const LivreurSchema: Schema = new Schema(
                 createdAt: { type: Date, default: Date.now },
             }
         ],
+        reviews: [
+            {
+                clientId: Schema.Types.ObjectId,
+                clientName: String,
+                rating: { type: Number, min: 1, max: 5 },
+                comment: String,
+                createdAt: { type: Date, default: Date.now }
+            }
+        ],
+        averageRating: { type: Number, default: 0 },
     },
     {
         timestamps: true,

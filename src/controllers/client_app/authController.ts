@@ -50,6 +50,15 @@ export const login = async (req: Request, res: Response) => {
 
         console.log(`[AUTH] Checking User: ${phoneNumber} -> FOUND in database. Status: ${user.status}`);
 
+        if (user.status === 'Suspended') {
+            console.warn(`[AUTH] Login Failed: Account suspended for number: ${phoneNumber}`);
+            res.status(403).json({
+                success: false,
+                message: "Votre compte a été suspendu. Veuillez contacter le support."
+            });
+            return;
+        }
+
         user.otp = otp;
         user.otpExpires = otpExpires;
         await user.save();
@@ -100,6 +109,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
         user.otp = undefined;
         user.otpExpires = undefined;
         user.isVerified = true;
+        user.lastConnected = new Date();
 
         // NOTE: We no longer auto-activate the user here. 
         // Activation happens in updateProfile once they provide name/city.

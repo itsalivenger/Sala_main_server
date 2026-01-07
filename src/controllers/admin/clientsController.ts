@@ -20,6 +20,7 @@ export const getAllClients = async (req: Request, res: Response) => {
                 status: client.status,
                 totalOrders,
                 lastLogin: client.lastLogin,
+                lastConnected: client.lastConnected,
                 createdAt: client.createdAt
             };
         }));

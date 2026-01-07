@@ -9,6 +9,8 @@ export interface IClient extends Document {
     isVerified: boolean;
     status: 'Active' | 'Inactive' | 'Pending' | 'Suspended';
     lastLogin?: Date;
+    lastConnected?: Date;
+    address?: string;
     pendingPhoneNumber?: string;
     phoneChangeOtp?: string;
     phoneChangeOtpExpires?: Date;
@@ -75,6 +77,13 @@ const ClientSchema: Schema = new Schema(
         },
         lastLogin: {
             type: Date,
+        },
+        lastConnected: {
+            type: Date,
+        },
+        address: {
+            type: String,
+            trim: true,
         },
         pendingPhoneNumber: {
             type: String,
