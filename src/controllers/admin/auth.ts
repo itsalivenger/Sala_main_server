@@ -26,7 +26,7 @@ export const login = async (req: Request, res: Response) => {
         await admin.save();
 
         const token = jwt.sign(
-            { id: admin._id, email: admin.email, role: admin.role },
+            { id: admin._id, email: admin.email, role: admin.role, name: admin.name },
             JWT_SECRET,
             { expiresIn: '24h' }
         );

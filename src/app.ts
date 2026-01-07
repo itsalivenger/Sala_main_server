@@ -14,6 +14,8 @@ import adminLivreursRoutes from './routes/admin/livreurs';
 import authRoutes from './routes/admin/auth';
 import adminWalletRoutes from './routes/admin/wallet';
 import settingsRoutes from './routes/admin/settings';
+import adminCatalogRoutes from './routes/admin/catalog';
+import adminCategoryRoutes from './routes/admin/categories';
 
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
@@ -33,8 +35,23 @@ const app: Application = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+const allowedOrigins = ['http://localhost:3000'];
+if (process.env.ALLOWED_ORIGINS) {
+    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
+}
+
 app.use(cors({
-    origin: '*',
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.warn(`CORS blocked for origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
 }));
 app.use(helmet({
@@ -51,6 +68,8 @@ app.use('/api/admin/livreurs', adminLivreursRoutes);
 app.use('/api/admin/auth', authRoutes);
 app.use('/api/admin/wallet', adminWalletRoutes);
 app.use('/api/admin/settings', settingsRoutes);
+app.use('/api/admin/catalog', adminCatalogRoutes);
+app.use('/api/admin/categories', adminCategoryRoutes);
 import orderRoutes from './routes/admin/orders';
 app.use('/api/admin/orders', orderRoutes);
 import uploadRoutes from './routes/admin/upload';
