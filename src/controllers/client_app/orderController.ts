@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Order from '../../models/Order';
+import Livreur from '../../models/Livreur';
 import Product from '../../models/Product';
 import mongoose from 'mongoose';
 
@@ -204,23 +205,22 @@ export const getOrderMapData = async (req: Request, res: Response) => {
         // If order is active and not yet delivered/completed, include livreur location
         const activeStatuses = ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'];
         if (activeStatuses.includes(order.status) && order.livreurId) {
-            // We need to fetch livreur's last known location
-            // Since we can't import Livreur easily if it's not at top, let's assume I can add import or dynamic import.
-            // But wait, I'm inside a function.
-            // I'll check if Livreur is imported or use mongoose.model('Livreur') to avoid circular deps if any.
-            const LivreurModel = mongoose.model('Livreur');
-            const livreur = await LivreurModel.findById(order.livreurId).select('lastLocation');
+            try {
+                const livreur = await Livreur.findById(order.livreurId).select('lastLocation');
 
-            if (livreur && livreur.lastLocation) {
-                // Check staleness? Maybe not strictly required by prompt, but good practice.
-                // Prompt: "if available ... last known livreur position"
-                data.livreur = {
-                    lat: livreur.lastLocation.lat,
-                    lng: livreur.lastLocation.lng,
-                    updatedAt: livreur.lastLocation.timestamp
-                };
+                if (livreur && livreur.lastLocation && livreur.lastLocation.lat && livreur.lastLocation.lng) {
+                    data.livreur = {
+                        lat: livreur.lastLocation.lat,
+                        lng: livreur.lastLocation.lng,
+                        updatedAt: livreur.lastLocation.timestamp || new Date()
+                    };
+                }
+            } catch (err) {
+                console.error('[OrderController] Error fetching livreur location:', err);
+                // Fail silent, just don't include livreur
             }
         }
+
 
         res.json({ success: true, data });
     } catch (error) {
