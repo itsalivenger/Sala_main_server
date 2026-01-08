@@ -253,6 +253,7 @@ export const getOrderTracking = async (req: Request, res: Response) => {
         // Only allowed for the assigned livreur or maybe the client (but this is livreur controller)
         const order = await Order.findById(id)
             .populate('livreurId', 'lastLocation')
+            .populate('clientId', 'lastPosition name phoneNumber')
             .lean();
 
         if (!order) {
@@ -269,6 +270,7 @@ export const getOrderTracking = async (req: Request, res: Response) => {
             pickup: order.pickupLocation,
             dropoff: order.dropoffLocation,
             livreurLocation: (order.livreurId as any)?.lastLocation,
+            clientLocation: (order.clientId as any)?.lastPosition,
             status: order.status
         });
     } catch (error: any) {
