@@ -17,7 +17,7 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
 
         // Build query for available orders
         const query = {
-            status: 'PAID',
+            status: 'SEARCHING_FOR_LIVREUR',
             livreurId: { $exists: false }
         };
 
@@ -127,8 +127,8 @@ export const acceptOrder = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
         }
 
-        // Verify order is available (PAID and not assigned)
-        if (order.status !== 'PAID') {
+        // Verify order is available
+        if (order.status !== 'PAID' && order.status !== 'SEARCHING_FOR_LIVREUR') {
             return res.status(400).json({
                 success: false,
                 message: 'Cette commande n\'est plus disponible.'

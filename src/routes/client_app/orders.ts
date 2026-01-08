@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createOrder, getMyOrders, getMyOrderDetails, previewPricing } from '../../controllers/client_app/orderController';
+import { createOrder, getMyOrders, getMyOrderDetails, previewPricing, cancelOrder } from '../../controllers/client_app/orderController';
 import { protect } from '../../middleware/auth';
 
 const router = Router();
@@ -11,5 +11,6 @@ router.post('/calculate', previewPricing);
 router.post('/', protect, createOrder);
 router.get('/', protect, getMyOrders);
 router.get('/:id', protect, getMyOrderDetails);
+router.post('/:id/cancel', protect, cancelOrder);
 
 export default router;

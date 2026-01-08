@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Client from '../../models/Client';
 import Livreur from '../../models/Livreur';
+import { sendPushNotification } from '../../services/notificationService';
 
 /**
  * @desc    Get all complaints from both Clients and Livreurs
@@ -168,7 +169,27 @@ export const addComplaintMessage = async (req: Request, res: Response) => {
                 text,
                 createdAt: new Date()
             });
+
+            // Add notification for the user
+            user.notifications.push({
+                title: 'Nouveau message du support',
+                message: `Réponse à votre réclamation: "${complaint.subject}"`,
+                type: 'General',
+                isRead: false,
+                createdAt: new Date()
+            });
+
             await user.save();
+
+            // Send real Push Notification
+            if (user.pushToken) {
+                await sendPushNotification(
+                    user.pushToken,
+                    'Nouveau message du support',
+                    `Réponse à votre réclamation: "${complaint.subject}"`,
+                    { complaintId: id }
+                );
+            }
         } else {
             user = await (Livreur.findOne({ 'complaints._id': id }) as any);
             if (user) {
@@ -178,7 +199,27 @@ export const addComplaintMessage = async (req: Request, res: Response) => {
                     text,
                     createdAt: new Date()
                 });
+
+                // Add notification for the livreur
+                user.notifications.push({
+                    title: 'Nouveau message du support',
+                    message: `Réponse à votre réclamation: "${complaint.subject}"`,
+                    type: 'General',
+                    isRead: false,
+                    createdAt: new Date()
+                });
+
                 await user.save();
+
+                // Send real Push Notification
+                if (user.pushToken) {
+                    await sendPushNotification(
+                        user.pushToken,
+                        'Nouveau message du support',
+                        `Réponse à votre réclamation: "${complaint.subject}"`,
+                        { complaintId: id }
+                    );
+                }
             } else {
                 return res.status(404).json({ success: false, message: 'Plainte non trouvée.' });
             }

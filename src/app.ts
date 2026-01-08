@@ -88,6 +88,8 @@ app.use('/api/client/auth', clientAuthRoutes);
 app.use('/api/client/support', supportRoutes);
 app.use('/api/client/catalog', catalogRoutes);
 app.use('/api/client/orders', clientOrderRoutes);
+import clientSettingsRoutes from './routes/client_app/settings';
+app.use('/api/client/settings', clientSettingsRoutes);
 
 // Livreur App Routes
 app.use('/api/livreur/auth', livreurAuthRoutes);

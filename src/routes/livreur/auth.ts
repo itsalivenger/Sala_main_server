@@ -21,5 +21,6 @@ router.get('/complaints', protect, authController.getComplaints);
 router.post('/complaints', protect, authController.createComplaint);
 router.get('/complaints/:id', protect, authController.getComplaintById);
 router.post('/complaints/:id/messages', protect, authController.addComplaintMessage);
+router.post('/push-token', protect, authController.savePushToken);
 
 export default router;

@@ -10,7 +10,8 @@ import {
     markOrderPickedUp,
     markOrderInTransit,
     deliverOrder,
-    cancelOrder
+    cancelOrder,
+    markOrderShopping
 } from '../../controllers/livreur/orderLifecycleController';
 import { protect } from '../../middleware/auth';
 
@@ -35,6 +36,7 @@ router.post('/:id/accept', acceptOrder);
 router.post('/:id/reject', rejectOrder);
 
 // Order Lifecycle routes
+router.patch('/:id/shopping', markOrderShopping);
 router.patch('/:id/pickup', markOrderPickedUp);
 router.patch('/:id/in-transit', markOrderInTransit);
 router.post('/:id/deliver', deliverOrder);

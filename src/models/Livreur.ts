@@ -8,6 +8,7 @@ export interface ILivreur extends Document {
     otpExpires?: Date;
     isVerified: boolean;
     status: 'Pending' | 'Active' | 'Inactive' | 'Suspended' | 'Approved';
+    pushToken?: string;
     walletBalance: number;
     isOnline: boolean;
     lastLocation?: {
@@ -83,7 +84,7 @@ export interface ILivreur extends Document {
     // Support/Complaints
     complaints: Array<{
         subject: string;
-        category: 'Réclamation' | 'Question' | 'Autres';
+        category: 'Réclamation' | 'Questions' | 'Autres';
         status: 'Open' | 'Resolved' | 'In Progress';
         requesterInfo: {
             name: string;
@@ -155,6 +156,9 @@ const LivreurSchema: Schema = new Schema(
             type: String,
             enum: ['Pending', 'Active', 'Inactive', 'Suspended', 'Approved'],
             default: 'Pending',
+        },
+        pushToken: {
+            type: String,
         },
         walletBalance: {
             type: Number,
@@ -239,7 +243,7 @@ const LivreurSchema: Schema = new Schema(
                 subject: String,
                 category: {
                     type: String,
-                    enum: ['Réclamation', 'Question', 'Autres'],
+                    enum: ['Réclamation', 'Questions', 'Autres'],
                     default: 'Autres'
                 },
                 status: { type: String, enum: ['Open', 'Resolved', 'In Progress'], default: 'Open' },

@@ -4,11 +4,11 @@ import Livreur from '../../models/Livreur';
 import mongoose from 'mongoose';
 
 /**
- * @desc    Mark order as picked up
- * @route   PATCH /api/livreur/orders/:id/pickup
+ * @desc    Mark order as shopping (for market/shopping orders)
+ * @route   PATCH /api/livreur/orders/:id/shopping
  * @access  Private/Livreur
  */
-export const markOrderPickedUp = async (req: Request, res: Response) => {
+export const markOrderShopping = async (req: Request, res: Response) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -35,6 +35,72 @@ export const markOrderPickedUp = async (req: Request, res: Response) => {
         }
 
         if (order.status !== 'ASSIGNED') {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: `Impossible de démarrer les achats. Statut actuel: ${order.status}`
+            });
+        }
+
+        // Update status
+        order.status = 'SHOPPING';
+        order.timeline.push({
+            status: 'SHOPPING',
+            timestamp: new Date(),
+            actor: 'Livreur',
+            note: 'Livreur arrivé au magasin/point de collecte'
+        });
+
+        await order.save({ session });
+        await session.commitTransaction();
+
+        res.status(200).json({
+            success: true,
+            message: 'Statut mis à jour: En cours d\'achats.',
+            order
+        });
+    } catch (error: any) {
+        await session.abortTransaction();
+        console.error('[LIVREUR_ORDERS] Shopping Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la mise à jour.' });
+    } finally {
+        session.endSession();
+    }
+};
+
+/**
+ * @desc    Mark order as picked up
+ * @route   PATCH /api/livreur/orders/:id/pickup
+ * @access  Private/Livreur
+ */
+export const markOrderPickedUp = async (req: Request, res: Response) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { id } = req.params;
+        const livreurId = (req as any).user?.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'ID de commande invalide.' });
+        }
+
+        const order = await Order.findById(id).session(session);
+
+        if (!order) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+        }
+
+        // Verify order belongs to this livreur
+        if (!order.livreurId || order.livreurId.toString() !== livreurId) {
+            await session.abortTransaction();
+            return res.status(403).json({ success: false, message: 'Cette commande ne vous est pas assignée.' });
+        }
+
+        // Allow transition from ASSIGNED or SHOPPING
+        if (order.status !== 'ASSIGNED' && order.status !== 'SHOPPING') {
             await session.abortTransaction();
             return res.status(400).json({
                 success: false,
@@ -285,14 +351,17 @@ export const cancelOrder = async (req: Request, res: Response) => {
             timestamp: new Date()
         };
 
-        order.status = 'CANCELLED_CLIENT'; // Using existing enum value
+        order.status = 'CANCELLED_CLIENT'; // Using existng enum value (since CANCELLED_LIVREUR not available in enum yet, or reuse CLIENT/ADMIN)
+        // Wait, checking enum status map... status can be CANCELLED_CLIENT, CANCELLED_ADMIN.
+        // Let's stick to 'CANCELLED_ADMIN' as it's closer to internal concellation than client self-cancellation.
+        order.status = 'CANCELLED_ADMIN';
         order.livreurId = undefined; // Unassign livreur
 
         order.timeline.push({
-            status: 'CANCELLED',
+            status: 'CANCELLED_ADMIN',
             timestamp: new Date(),
             actor: 'Livreur',
-            note: `Annulée: ${reason}${details ? ' - ' + details : ''}`
+            note: `Annulée par livreur: ${reason}${details ? ' - ' + details : ''}`
         });
 
         await order.save({ session });

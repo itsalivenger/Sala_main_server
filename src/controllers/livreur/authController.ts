@@ -653,3 +653,32 @@ export const addComplaintMessage = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur Serveur' });
     }
 };
+
+/**
+ * @desc    Save Push Token
+ * @route   POST /api/livreur/auth/push-token
+ * @access  Private
+ */
+export const savePushToken = async (req: Request, res: Response) => {
+    try {
+        const { pushToken } = req.body;
+        const livreurId = (req as any).user.id;
+
+        if (!pushToken) {
+            return res.status(400).json({ success: false, message: 'Token requis' });
+        }
+
+        const livreur = await Livreur.findById(livreurId);
+        if (!livreur) {
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+        }
+
+        livreur.pushToken = pushToken;
+        await livreur.save();
+
+        res.status(200).json({ success: true, message: 'Push token enregistré' });
+    } catch (error) {
+        console.error('Save push token error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};

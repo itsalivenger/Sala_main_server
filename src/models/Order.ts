@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IOrder extends Document {
     clientId: mongoose.Types.ObjectId;
     livreurId?: mongoose.Types.ObjectId;
-    status: 'CREATED' | 'PAID' | 'ASSIGNED' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED_CLIENT' | 'CANCELLED_ADMIN' | 'REFUNDED';
+    status: 'CREATED' | 'PAID' | 'SEARCHING_FOR_LIVREUR' | 'ASSIGNED' | 'SHOPPING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED_CLIENT' | 'CANCELLED_ADMIN' | 'REFUNDED';
 
     // Core Info
     items: Array<{
@@ -12,6 +12,7 @@ export interface IOrder extends Document {
         unitWeight?: number; // In Kg
         totalWeight?: number; // In Kg
         price: number;
+        image?: string; // Added thumbnail at order time
     }>;
     totalWeight: number; // Sum of items weight
 
@@ -103,7 +104,7 @@ const OrderSchema: Schema = new Schema(
         },
         status: {
             type: String,
-            enum: ['CREATED', 'PAID', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED'],
+            enum: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED'],
             default: 'CREATED',
             index: true
         },
@@ -114,6 +115,7 @@ const OrderSchema: Schema = new Schema(
                 unitWeight: { type: Number, default: 0 },
                 totalWeight: { type: Number, default: 0 },
                 price: Number,
+                image: String,
             }
         ],
         totalWeight: { type: Number, default: 0 },
@@ -201,8 +203,14 @@ const OrderSchema: Schema = new Schema(
     {
         timestamps: true,
         collection: 'Orders',
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
     }
 );
+
+OrderSchema.virtual('orderId').get(function (this: any) {
+    return `SALA-${this._id.toString().slice(-4).toUpperCase()}`;
+});
 
 // Indexes for better search performance
 OrderSchema.index({ createdAt: -1 });

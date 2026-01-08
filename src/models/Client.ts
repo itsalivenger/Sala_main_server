@@ -14,6 +14,7 @@ export interface IClient extends Document {
     pendingPhoneNumber?: string;
     phoneChangeOtp?: string;
     phoneChangeOtpExpires?: Date;
+    pushToken?: string;
     notifications: Array<{
         title: string;
         message: string;
@@ -23,7 +24,7 @@ export interface IClient extends Document {
     }>;
     complaints: Array<{
         subject: string;
-        category: 'Réclamation' | 'Plaintes' | 'Questions' | 'Autres';
+        category: 'Réclamation' | 'Questions' | 'Autres';
         status: 'Open' | 'Resolved' | 'In Progress';
         requesterInfo: {
             name: string;
@@ -97,6 +98,9 @@ const ClientSchema: Schema = new Schema(
             type: Date,
             select: false,
         },
+        pushToken: {
+            type: String,
+        },
         notifications: [
             {
                 title: String,
@@ -111,7 +115,7 @@ const ClientSchema: Schema = new Schema(
                 subject: String,
                 category: {
                     type: String,
-                    enum: ['Réclamation', 'Plaintes', 'Questions', 'Autres'],
+                    enum: ['Réclamation', 'Questions', 'Autres'],
                     default: 'Autres'
                 },
                 status: { type: String, enum: ['Open', 'Resolved', 'In Progress'], default: 'Open' },

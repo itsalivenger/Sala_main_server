@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import Client from '../models/Client';
+import Livreur from '../models/Livreur';
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
     let token;
@@ -20,6 +22,22 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
         const secret = process.env.JWT_SECRET || 'secret';
         const decoded = jwt.verify(token, secret) as any;
         (req as any).user = decoded;
+
+        // Check for account suspension if Client or Livreur
+        if (decoded.role === 'user') {
+            const client = await Client.findById(decoded.id).select('status');
+            if (client && client.status === 'Suspended') {
+                res.status(403).json({ success: false, message: 'Votre compte a été suspendu. Veuillez contacter le support.' });
+                return;
+            }
+        } else if (decoded.role === 'livreur') {
+            const livreur = await Livreur.findById(decoded.id).select('status');
+            if (livreur && livreur.status === 'Suspended') {
+                res.status(403).json({ success: false, message: 'Votre compte a été suspendu. Veuillez contacter le support.' });
+                return;
+            }
+        }
+
         next();
     } catch (err: any) {
         console.error('[AUTH_MIDDLEWARE] Token verification failed:', err.message);

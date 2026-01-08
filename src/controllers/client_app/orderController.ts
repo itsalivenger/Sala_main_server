@@ -72,23 +72,40 @@ export const createOrder = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: 'Le panier est vide' });
         }
 
-        const pricing = calculateOrderPricing(items);
+        // Fetch product images to store in history
+        const productIds = items.map((i: any) => i._id);
+        const products = await Product.find({ _id: { $in: productIds } });
+
+        const enrichedItems = items.map((item: any) => {
+            const product = products.find(p => p._id.toString() === item._id.toString());
+            return {
+                ...item,
+                image: product?.images && product.images.length > 0 ? product.images[0] : undefined
+            };
+        });
+
+        const pricing = calculateOrderPricing(enrichedItems);
 
         const newOrder = new Order({
             clientId,
-            items,
+            items: enrichedItems,
             totalWeight: pricing.totalWeight,
             pickupLocation,
             dropoffLocation,
             pricing,
             paymentMethod: paymentMethod || 'Cash',
             paymentStatus: paymentMethod === 'Card' ? 'Authorized' : 'Pending',
-            status: 'CREATED',
+            status: 'SEARCHING_FOR_LIVREUR',
             timeline: [{
-                status: 'CREATED',
+                status: 'PAID',
                 timestamp: new Date(),
-                actor: 'Client',
-                note: 'Commande créée par le client'
+                actor: 'System',
+                note: 'Paiement confirmé'
+            }, {
+                status: 'SEARCHING_FOR_LIVREUR',
+                timestamp: new Date(),
+                actor: 'System',
+                note: 'Recherche d\'un livreur à proximité...'
             }]
         });
 
@@ -133,7 +150,8 @@ export const getMyOrders = async (req: Request, res: Response) => {
 export const getMyOrderDetails = async (req: Request, res: Response) => {
     try {
         const clientId = (req as any).user?.id;
-        const order = await Order.findOne({ _id: req.params.id, clientId });
+        const order = await Order.findOne({ _id: req.params.id, clientId })
+            .populate('livreurId', 'name phoneNumber averageRating lastLocation selfie');
 
         if (!order) {
             return res.status(404).json({ success: false, message: 'Commande non trouvée' });
@@ -143,5 +161,58 @@ export const getMyOrderDetails = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('[OrderController] Get order details error:', error);
         res.status(500).json({ success: false, message: 'Erreur lors de la récupération des détails' });
+    }
+};
+
+/**
+ * POST /api/client/orders/:id/cancel
+ * Client cancels an order (only if not DELIVERED)
+ */
+export const cancelOrder = async (req: Request, res: Response) => {
+    try {
+        const clientId = (req as any).user?.id;
+        const { reason } = req.body;
+
+        const order = await Order.findOne({ _id: req.params.id, clientId });
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Commande non trouvée' });
+        }
+
+        // Prevent cancellation if delivered
+        const nonCancellableStatuses = ['DELIVERED', 'REFUNDED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN'];
+        if (nonCancellableStatuses.includes(order.status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Impossible d'annuler la commande. Statut actuel: ${order.status}`
+            });
+        }
+
+        // Apply penalty warnings or restrictions logic could go here if status is PICKED_UP
+
+        order.status = 'CANCELLED_CLIENT';
+        order.cancellation = {
+            reason: reason || 'Annulation client',
+            timestamp: new Date(),
+            cancelledBy: 'customer',
+            penalty: 0
+        };
+
+        order.timeline.push({
+            status: 'CANCELLED_CLIENT',
+            timestamp: new Date(),
+            actor: 'Client',
+            note: 'Annulation demandée par le client'
+        });
+
+        // If a livreur was assigned, unassign or notify (in a real system)
+        // For now, setting status to CANCELLED_CLIENT hides it from active livreur queries
+
+        await order.save();
+
+        res.json({ success: true, message: 'Commande annulée avec succès', order });
+    } catch (error) {
+        console.error('[OrderController] Cancel order error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de l\'annulation' });
     }
 };
