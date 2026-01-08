@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createOrder, getMyOrders, getMyOrderDetails, previewPricing, cancelOrder, getOrderMapData } from '../../controllers/client_app/orderController';
+import { createOrder, getMyOrders, getMyOrderDetails, previewPricing, cancelOrder, getOrderMapData, sendOrderMessage, getOrderMessages } from '../../controllers/client_app/orderController';
 import { protect } from '../../middleware/auth';
 
 const router = Router();
@@ -11,6 +11,8 @@ router.post('/calculate', previewPricing);
 router.post('/', protect, createOrder);
 router.get('/', protect, getMyOrders);
 router.get('/:id/map', protect, getOrderMapData);
+router.get('/:id/messages', protect, getOrderMessages);
+router.post('/:id/messages', protect, sendOrderMessage);
 router.get('/:id', protect, getMyOrderDetails);
 router.post('/:id/cancel', protect, cancelOrder);
 

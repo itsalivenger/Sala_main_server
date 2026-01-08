@@ -5,7 +5,9 @@ import {
     acceptOrder,
     rejectOrder,
     getMyOrders,
-    getOrderTracking
+    getOrderTracking,
+    getOrderMessages,
+    sendOrderMessage
 } from '../../controllers/livreur/ordersController';
 import {
     markOrderPickedUp,
@@ -21,14 +23,16 @@ const router = Router();
 // All routes require authentication
 router.use(protect);
 
+// Diagnostic route
+router.get('/ping-orders', (req, res) => res.json({ success: true, message: 'Livreur orders router is active' }));
+
+// Chat and Tracking (Specific routes first)
+router.get('/:id/messages', getOrderMessages);
+router.post('/:id/messages', sendOrderMessage);
+router.get('/:id/tracking', getOrderTracking);
+
 // Get available orders (not yet assigned)
 router.get('/available', getAvailableOrders);
-
-// Get my assigned orders
-router.get('/my-orders', getMyOrders);
-
-// Get tracking data
-router.get('/:id/tracking', getOrderTracking);
 
 // Get order details
 router.get('/:id', getOrderDetails);

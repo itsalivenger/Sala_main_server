@@ -278,3 +278,80 @@ export const getOrderTracking = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur lors de la récupération du suivi.' });
     }
 };
+
+/**
+ * @desc    Send a message for an order
+ * @route   POST /api/livreur/orders/:id/messages
+ * @access  Private/Livreur
+ */
+export const sendOrderMessage = async (req: Request, res: Response) => {
+    console.log(`[LIVREUR_CHAT] POST /messages for order: ${req.params.id}`);
+    try {
+        const { id } = req.params;
+        const { text } = req.body;
+        const livreurId = (req as any).user?.id;
+
+        if (!text) {
+            return res.status(400).json({ success: false, message: 'Le message est vide.' });
+        }
+
+        const order = await Order.findById(id);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+        }
+
+        // Security: Ensure the requesting livreur is assigned
+        if (order.livreurId?.toString() !== livreurId) {
+            return res.status(403).json({ success: false, message: 'Non autorisé.' });
+        }
+
+        if (!order.chatMessages) order.chatMessages = [];
+
+        order.chatMessages.push({
+            sender: 'Livreur',
+            text,
+            createdAt: new Date()
+        });
+
+        await order.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Message envoyé.',
+            chatMessages: order.chatMessages
+        });
+    } catch (error: any) {
+        console.error('[LIVREUR_CHAT] Send Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de l\'envoi du message.' });
+    }
+};
+
+/**
+ * @desc    Get chat messages for an order
+ * @route   GET /api/livreur/orders/:id/messages
+ * @access  Private/Livreur
+ */
+export const getOrderMessages = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const livreurId = (req as any).user?.id;
+
+        const order = await Order.findById(id).select('chatMessages livreurId');
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+        }
+
+        // Security
+        if (order.livreurId?.toString() !== livreurId) {
+            return res.status(403).json({ success: false, message: 'Non autorisé.' });
+        }
+
+        res.status(200).json({
+            success: true,
+            chatMessages: order.chatMessages || []
+        });
+    } catch (error: any) {
+        console.error('[LIVREUR_CHAT] Get Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la récupération des messages.' });
+    }
+};

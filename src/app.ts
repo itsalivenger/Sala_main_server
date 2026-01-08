@@ -94,6 +94,7 @@ app.use('/api/client/settings', clientSettingsRoutes);
 // Livreur App Routes
 app.use('/api/livreur/auth', livreurAuthRoutes);
 app.use('/api/livreur/wallet', livreurWalletRoutes);
+console.log('Registering Livreur Orders Routes at /api/livreur/orders');
 app.use('/api/livreur/orders', livreurOrdersRoutes);
 app.use('/api/livreur/availability', livreurAvailabilityRoutes);
 

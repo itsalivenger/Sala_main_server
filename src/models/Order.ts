@@ -63,6 +63,13 @@ export interface IOrder extends Document {
         timestamp: Date;
     };
 
+    // Messaging
+    chatMessages?: Array<{
+        sender: 'Client' | 'Livreur' | 'Admin';
+        text: string;
+        createdAt: Date;
+    }>;
+
     // Timeline & Audit
     timeline: Array<{
         status: string;
@@ -172,7 +179,16 @@ const OrderSchema: Schema = new Schema(
             },
             timestamp: Date
         },
-
+        chatMessages: [
+            {
+                sender: {
+                    type: String,
+                    enum: ['Client', 'Livreur', 'Admin']
+                },
+                text: String,
+                createdAt: { type: Date, default: Date.now }
+            }
+        ],
         timeline: [
             {
                 status: String,

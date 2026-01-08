@@ -301,3 +301,79 @@ export const cancelOrder = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur lors de l\'annulation' });
     }
 };
+
+/**
+ * @desc    Send a message for an order
+ * @route   POST /api/client/orders/:id/messages
+ * @access  Private/Client
+ */
+export const sendOrderMessage = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { text } = req.body;
+        const clientId = (req as any).user?.id;
+
+        if (!text) {
+            return res.status(400).json({ success: false, message: 'Le message est vide.' });
+        }
+
+        const order = await Order.findById(id);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+        }
+
+        // Security: Ensure the requesting client is the owner
+        if (order.clientId?.toString() !== clientId) {
+            return res.status(403).json({ success: false, message: 'Non autorisé.' });
+        }
+
+        if (!order.chatMessages) order.chatMessages = [];
+
+        order.chatMessages.push({
+            sender: 'Client',
+            text,
+            createdAt: new Date()
+        });
+
+        await order.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Message envoyé.',
+            chatMessages: order.chatMessages
+        });
+    } catch (error: any) {
+        console.error('[CLIENT_CHAT] Send Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de l\'envoi du message.' });
+    }
+};
+
+/**
+ * @desc    Get chat messages for an order
+ * @route   GET /api/client/orders/:id/messages
+ * @access  Private/Client
+ */
+export const getOrderMessages = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const clientId = (req as any).user?.id;
+
+        const order = await Order.findById(id).select('chatMessages clientId');
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+        }
+
+        // Security
+        if (order.clientId?.toString() !== clientId) {
+            return res.status(403).json({ success: false, message: 'Non autorisé.' });
+        }
+
+        res.status(200).json({
+            success: true,
+            chatMessages: order.chatMessages || []
+        });
+    } catch (error: any) {
+        console.error('[CLIENT_CHAT] Get Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la récupération des messages.' });
+    }
+};
