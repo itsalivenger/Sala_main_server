@@ -119,19 +119,35 @@ export const createOrder = async (req: Request, res: Response) => {
 
 /**
  * GET /api/client/orders
+ * Query params: page, limit, type ('active' | 'history')
  */
 export const getMyOrders = async (req: Request, res: Response) => {
     try {
         const clientId = (req as any).user?.id;
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, type } = req.query;
+
+        console.log(`[OrderController] GetMyOrders - Client: ${clientId}, Type: ${type}, Page: ${page}`);
+
+        const query: any = { clientId };
+
+        if (type === 'history') {
+            query.status = {
+                $in: ['COMPLETED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED']
+            };
+        } else {
+            // Default to 'active' orders if type is 'active' or undefined
+            query.status = {
+                $in: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED']
+            };
+        }
 
         const skip = (Number(page) - 1) * Number(limit);
-        const orders = await Order.find({ clientId })
+        const orders = await Order.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(Number(limit));
 
-        const total = await Order.countDocuments({ clientId });
+        const total = await Order.countDocuments(query);
 
         res.json({
             success: true,
@@ -141,6 +157,75 @@ export const getMyOrders = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('[OrderController] Get orders error:', error);
         res.status(500).json({ success: false, message: 'Erreur lors de la récupération de l\'historique' });
+    }
+};
+
+/**
+ * GET /api/client/orders/:id/map
+ * Public/Private: Private
+ * Desc: Get read-only map data for tracking
+ */
+export const getOrderMapData = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const clientId = (req as any).user?.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID invalide' });
+        }
+
+        const order = await Order.findById(id).select('clientId status pickupLocation dropoffLocation updatedAt livreurId');
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Commande non trouvée' });
+        }
+
+        if (order.clientId.toString() !== clientId) {
+            return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+        }
+
+        // Prepare response data
+        const data: any = {
+            orderId: order._id,
+            status: order.status,
+            updatedAt: order.updatedAt,
+            pickup: order.pickupLocation ? {
+                lat: order.pickupLocation.lat,
+                lng: order.pickupLocation.lng,
+                address: order.pickupLocation.address // safe to share address? yes
+            } : null,
+            delivery: order.dropoffLocation ? {
+                lat: order.dropoffLocation.lat,
+                lng: order.dropoffLocation.lng,
+                address: order.dropoffLocation.address
+            } : null
+        };
+
+        // If order is active and not yet delivered/completed, include livreur location
+        const activeStatuses = ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'];
+        if (activeStatuses.includes(order.status) && order.livreurId) {
+            // We need to fetch livreur's last known location
+            // Since we can't import Livreur easily if it's not at top, let's assume I can add import or dynamic import.
+            // But wait, I'm inside a function.
+            // I'll check if Livreur is imported or use mongoose.model('Livreur') to avoid circular deps if any.
+            const LivreurModel = mongoose.model('Livreur');
+            const livreur = await LivreurModel.findById(order.livreurId).select('lastLocation');
+
+            if (livreur && livreur.lastLocation) {
+                // Check staleness? Maybe not strictly required by prompt, but good practice.
+                // Prompt: "if available ... last known livreur position"
+                data.livreur = {
+                    lat: livreur.lastLocation.lat,
+                    lng: livreur.lastLocation.lng,
+                    updatedAt: livreur.lastLocation.timestamp
+                };
+            }
+        }
+
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('[OrderController] Map data error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la récupération des données de suivi' });
     }
 };
 
@@ -179,8 +264,8 @@ export const cancelOrder = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: 'Commande non trouvée' });
         }
 
-        // Prevent cancellation if delivered
-        const nonCancellableStatuses = ['DELIVERED', 'REFUNDED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN'];
+        // Prevent cancellation if picked up or later
+        const nonCancellableStatuses = ['PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'REFUNDED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'COMPLETED'];
         if (nonCancellableStatuses.includes(order.status)) {
             return res.status(400).json({
                 success: false,

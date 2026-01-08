@@ -104,7 +104,7 @@ const OrderSchema: Schema = new Schema(
         },
         status: {
             type: String,
-            enum: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED'],
+            enum: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED', 'COMPLETED'],
             default: 'CREATED',
             index: true
         },
