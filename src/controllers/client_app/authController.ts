@@ -410,3 +410,34 @@ export const savePushToken = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur Serveur' });
     }
 };
+
+/**
+ * @desc    Update Client Last Position
+ * @route   PATCH /api/client/auth/location
+ * @access  Private
+ */
+export const updateLocation = async (req: Request, res: Response) => {
+    try {
+        const { lat, lng } = req.body;
+        const userId = (req as any).user.id;
+
+        if (lat === undefined || lng === undefined) {
+            res.status(400).json({ success: false, message: 'Coordonnées requises' });
+            return;
+        }
+
+        const user = await Client.findById(userId);
+        if (!user) {
+            res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+            return;
+        }
+
+        user.lastPosition = { lat, lng };
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Position mise à jour' });
+    } catch (error) {
+        console.error('Update location error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};

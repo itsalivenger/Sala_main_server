@@ -38,6 +38,10 @@ export interface IClient extends Document {
         }>;
         createdAt: Date;
     }>;
+    lastPosition?: {
+        lat: number;
+        lng: number;
+    };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -134,6 +138,10 @@ const ClientSchema: Schema = new Schema(
                 createdAt: { type: Date, default: Date.now },
             }
         ],
+        lastPosition: {
+            lat: { type: Number },
+            lng: { type: Number }
+        },
     },
     {
         timestamps: true,
