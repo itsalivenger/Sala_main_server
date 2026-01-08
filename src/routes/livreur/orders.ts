@@ -4,7 +4,8 @@ import {
     getOrderDetails,
     acceptOrder,
     rejectOrder,
-    getMyOrders
+    getMyOrders,
+    getOrderTracking
 } from '../../controllers/livreur/ordersController';
 import {
     markOrderPickedUp,
@@ -25,6 +26,9 @@ router.get('/available', getAvailableOrders);
 
 // Get my assigned orders
 router.get('/my-orders', getMyOrders);
+
+// Get tracking data
+router.get('/:id/tracking', getOrderTracking);
 
 // Get order details
 router.get('/:id', getOrderDetails);

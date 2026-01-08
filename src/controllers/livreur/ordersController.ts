@@ -235,3 +235,44 @@ export const getMyOrders = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur lors de la récupération des commandes.' });
     }
 };
+
+/**
+ * @desc    Get live tracking data for an order
+ * @route   GET /api/livreur/orders/:id/tracking
+ * @access  Private/Livreur
+ */
+export const getOrderTracking = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const livreurId = (req as any).user?.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID de commande invalide.' });
+        }
+
+        // Only allowed for the assigned livreur or maybe the client (but this is livreur controller)
+        const order = await Order.findById(id)
+            .populate('livreurId', 'lastLocation')
+            .lean();
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+        }
+
+        // Security: Ensure the requesting livreur is the one assigned
+        if (order.livreurId?._id.toString() !== livreurId) {
+            return res.status(403).json({ success: false, message: 'Non autorisé à suivre cette commande.' });
+        }
+
+        res.status(200).json({
+            success: true,
+            pickup: order.pickupLocation,
+            dropoff: order.dropoffLocation,
+            livreurLocation: (order.livreurId as any)?.lastLocation,
+            status: order.status
+        });
+    } catch (error: any) {
+        console.error('[LIVREUR_TRACKING] Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la récupération du suivi.' });
+    }
+};
