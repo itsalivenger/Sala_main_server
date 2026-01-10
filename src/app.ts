@@ -27,6 +27,7 @@ import supportRoutes from './routes/client_app/supportRoutes';
 import catalogRoutes from './routes/client_app/catalog';
 import clientOrderRoutes from './routes/client_app/orders';
 import clientSettingsRoutes from './routes/client_app/settings';
+import clientMessageRoutes from './routes/client_app/messages';
 
 // Livreur App Routes
 import livreurAuthRoutes from './routes/livreur/auth';
@@ -98,6 +99,7 @@ app.use('/api/client/auth', clientAuthRoutes);
 app.use('/api/client/support', supportRoutes);
 app.use('/api/client/catalog', catalogRoutes);
 app.use('/api/client/orders', clientOrderRoutes);
+app.use('/api/client/orders', clientMessageRoutes); // Message routes nested under orders
 app.use('/api/client/settings', clientSettingsRoutes);
 
 // --- STATIC ASSETS ---

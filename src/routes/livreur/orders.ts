@@ -5,9 +5,7 @@ import {
     acceptOrder,
     rejectOrder,
     getMyOrders,
-    getOrderTracking,
-    getOrderMessages,
-    sendOrderMessage
+    getOrderTracking
 } from '../../controllers/livreur/ordersController';
 import {
     markOrderPickedUp,
@@ -16,6 +14,7 @@ import {
     cancelOrder,
     markOrderShopping
 } from '../../controllers/livreur/orderLifecycleController';
+import { sendMessage, getMessages } from '../../controllers/livreur/messageController';
 import { protect } from '../../middleware/auth';
 
 const router = Router();
@@ -40,8 +39,8 @@ router.get('/my-orders', getMyOrders);
 // PARAMETERIZED ROUTES (with :id)
 // ========================================
 // Chat and Tracking
-router.get('/:id/messages', getOrderMessages);
-router.post('/:id/messages', sendOrderMessage);
+router.get('/:id/messages', getMessages);
+router.post('/:id/messages', sendMessage);
 router.get('/:id/tracking', getOrderTracking);
 
 // Order actions

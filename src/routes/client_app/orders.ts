@@ -11,8 +11,9 @@ router.post('/calculate', previewPricing);
 router.post('/', protect, createOrder);
 router.get('/', protect, getMyOrders);
 router.get('/:id/map', protect, getOrderMapData);
-router.get('/:id/messages', protect, getOrderMessages);
-router.post('/:id/messages', protect, sendOrderMessage);
+// Message routes moved to separate file 'messages.ts' to avoid controller conflicts
+// router.get('/:id/messages', protect, getOrderMessages);
+// router.post('/:id/messages', protect, sendOrderMessage);
 router.get('/:id', protect, getMyOrderDetails);
 router.post('/:id/cancel', protect, cancelOrder);
 
