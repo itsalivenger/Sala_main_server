@@ -286,6 +286,8 @@ export const getOrderTracking = async (req: Request, res: Response) => {
  */
 export const sendOrderMessage = async (req: Request, res: Response) => {
     console.log(`[LIVREUR_CHAT] POST /messages for order: ${req.params.id}`);
+    console.log(`[LIVREUR_CHAT] Body:`, JSON.stringify(req.body));
+    console.log(`[LIVREUR_CHAT] User:`, (req as any).user?.id);
     try {
         const { id } = req.params;
         const { text } = req.body;

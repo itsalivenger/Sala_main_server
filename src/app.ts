@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-
+import path from 'path';
 
 // Route Imports
 import newsletterRoutes from './routes/admin/newsletter';
@@ -16,12 +16,17 @@ import adminWalletRoutes from './routes/admin/wallet';
 import settingsRoutes from './routes/admin/settings';
 import adminCatalogRoutes from './routes/admin/catalog';
 import adminCategoryRoutes from './routes/admin/categories';
+import orderRoutes from './routes/admin/orders';
+import uploadRoutes from './routes/admin/upload';
+import cmsRoutes from './routes/admin/cms';
+import dashboardRoutes from './routes/admin/dashboard';
 
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
 import supportRoutes from './routes/client_app/supportRoutes';
 import catalogRoutes from './routes/client_app/catalog';
 import clientOrderRoutes from './routes/client_app/orders';
+import clientSettingsRoutes from './routes/client_app/settings';
 
 // Livreur App Routes
 import livreurAuthRoutes from './routes/livreur/auth';
@@ -35,6 +40,7 @@ const app: Application = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
 const allowedOrigins = ['http://localhost:3000'];
 if (process.env.ALLOWED_ORIGINS) {
     allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
@@ -42,9 +48,7 @@ if (process.env.ALLOWED_ORIGINS) {
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps)
         if (!origin) return callback(null, true);
-
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -54,12 +58,26 @@ app.use(cors({
     },
     credentials: true,
 }));
+
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
 app.use(morgan('dev'));
 
-// Scoped Admin Routes (moved to main_server)
+// --- DIAGNOSTIC SECTION ---
+app.use((req, res, next) => {
+    console.log(`[SALA_DEBUG] ${req.method} ${req.url}`);
+    next();
+});
+
+// --- PRIORITY ROUTES (Livreur) ---
+app.use('/api/livreur/orders', livreurOrdersRoutes);
+app.use('/api/livreur/auth', livreurAuthRoutes);
+app.use('/api/livreur/wallet', livreurWalletRoutes);
+app.use('/api/livreur/availability', livreurAvailabilityRoutes);
+
+// --- ADMIN ROUTES ---
 app.use('/api/admin/newsletter', newsletterRoutes);
 app.use('/api/admin/admins', adminAccountsRoutes);
 app.use('/api/admin/complaints', adminComplaintsRoutes);
@@ -70,35 +88,22 @@ app.use('/api/admin/wallet', adminWalletRoutes);
 app.use('/api/admin/settings', settingsRoutes);
 app.use('/api/admin/catalog', adminCatalogRoutes);
 app.use('/api/admin/categories', adminCategoryRoutes);
-import orderRoutes from './routes/admin/orders';
 app.use('/api/admin/orders', orderRoutes);
-import uploadRoutes from './routes/admin/upload';
 app.use('/api/admin/upload', uploadRoutes);
-import cmsRoutes from './routes/admin/cms';
 app.use('/api/admin/cms', cmsRoutes);
-import dashboardRoutes from './routes/admin/dashboard';
 app.use('/api/admin/dashboard', dashboardRoutes);
 
-// Static files for uploads
-import path from 'path';
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
-
-// Client App Routes
+// --- CLIENT ROUTES ---
 app.use('/api/client/auth', clientAuthRoutes);
 app.use('/api/client/support', supportRoutes);
 app.use('/api/client/catalog', catalogRoutes);
 app.use('/api/client/orders', clientOrderRoutes);
-import clientSettingsRoutes from './routes/client_app/settings';
 app.use('/api/client/settings', clientSettingsRoutes);
 
-// Livreur App Routes
-app.use('/api/livreur/auth', livreurAuthRoutes);
-app.use('/api/livreur/wallet', livreurWalletRoutes);
-console.log('Registering Livreur Orders Routes at /api/livreur/orders');
-app.use('/api/livreur/orders', livreurOrdersRoutes);
-app.use('/api/livreur/availability', livreurAvailabilityRoutes);
+// --- STATIC ASSETS ---
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
-// Basic Route for Health Check
+// --- HEALTH CHECK ---
 app.get('/', (req: Request, res: Response) => {
     res.json({
         message: 'SALA Main Server - Operations Layer',
@@ -110,10 +115,16 @@ app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({ status: 'OK' });
 });
 
-// Error Handling Middleware
+// --- 404 HANDLER ---
+app.use((req: Request, res: Response) => {
+    console.warn(`[SALA_404] Route not found: ${req.method} ${req.url}`);
+    res.status(404).send(`SALA_NOT_FOUND: ${req.method} ${req.url}`);
+});
+
+// --- ERROR HANDLER ---
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('[SALA_ERROR]', err.stack);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
 export default app;

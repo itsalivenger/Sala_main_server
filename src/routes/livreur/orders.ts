@@ -23,24 +23,29 @@ const router = Router();
 // All routes require authentication
 router.use(protect);
 
-// Diagnostic route
-router.get('/ping-orders', (req, res) => res.json({ success: true, message: 'Livreur orders router is active' }));
+// DIAGNOSTIC: Log all requests to this router
+router.use((req, res, next) => {
+    console.log(`[ORDERS_ROUTER] ${req.method} ${req.url} (base: ${req.baseUrl})`);
+    next();
+});
 
-// Chat and Tracking (Specific routes first)
+// ========================================
+// STATIC ROUTES FIRST (no parameters)
+// ========================================
+router.get('/ping-orders', (req, res) => res.json({ success: true, message: 'Livreur orders router is active' }));
+router.get('/available', getAvailableOrders);
+router.get('/my-orders', getMyOrders);
+
+// ========================================
+// PARAMETERIZED ROUTES (with :id)
+// ========================================
+// Chat and Tracking
 router.get('/:id/messages', getOrderMessages);
 router.post('/:id/messages', sendOrderMessage);
 router.get('/:id/tracking', getOrderTracking);
 
-// Get available orders (not yet assigned)
-router.get('/available', getAvailableOrders);
-
-// Get order details
-router.get('/:id', getOrderDetails);
-
-// Accept an order
+// Order actions
 router.post('/:id/accept', acceptOrder);
-
-// Reject an order
 router.post('/:id/reject', rejectOrder);
 
 // Order Lifecycle routes
@@ -49,5 +54,8 @@ router.patch('/:id/pickup', markOrderPickedUp);
 router.patch('/:id/in-transit', markOrderInTransit);
 router.post('/:id/deliver', deliverOrder);
 router.post('/:id/cancel', cancelOrder);
+
+// Get order details (most generic :id route, must be LAST)
+router.get('/:id', getOrderDetails);
 
 export default router;
