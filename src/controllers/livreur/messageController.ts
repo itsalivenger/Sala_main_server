@@ -2,13 +2,13 @@ import { Request, Response } from 'express';
 import Order from '../../models/Order';
 
 /**
- * @route   POST /api/livreur/orders/:orderId/messages
+ * @route   POST /api/livreur/orders/:id/messages
  * @desc    Send a message in order chat (Livreur)
  * @access  Protected (Livreur)
  */
 export const sendMessage = async (req: Request, res: Response) => {
     try {
-        const { orderId } = req.params;
+        const { id } = req.params;
         const { text } = req.body;
         const livreurId = (req as any).user.id; // JWT payload uses 'id'
 
@@ -17,7 +17,7 @@ export const sendMessage = async (req: Request, res: Response) => {
         }
 
         // Find order and verify livreur assignment
-        const order = await Order.findById(orderId);
+        const order = await Order.findById(id);
         if (!order) {
             return res.status(404).json({ success: false, message: 'Commande introuvable' });
         }
@@ -42,8 +42,9 @@ export const sendMessage = async (req: Request, res: Response) => {
         res.status(200).json({
             success: true,
             message: 'Message envoyé',
-            chatMessage: newMessage
+            chatMessages: order.chatMessages
         });
+
     } catch (error) {
         console.error('[Livreur sendMessage] Error:', error);
         res.status(500).json({ success: false, message: 'Erreur serveur' });
@@ -51,17 +52,17 @@ export const sendMessage = async (req: Request, res: Response) => {
 };
 
 /**
- * @route   GET /api/livreur/orders/:orderId/messages
+ * @route   GET /api/livreur/orders/:id/messages
  * @desc    Get all messages for an order (Livreur)
  * @access  Protected (Livreur)
  */
 export const getMessages = async (req: Request, res: Response) => {
     try {
-        const { orderId } = req.params;
+        const { id } = req.params;
         const livreurId = (req as any).user.id; // JWT payload uses 'id'
 
         // Find order and verify livreur assignment
-        const order = await Order.findById(orderId).select('chatMessages livreurId');
+        const order = await Order.findById(id).select('chatMessages livreurId');
         if (!order) {
             return res.status(404).json({ success: false, message: 'Commande introuvable' });
         }
@@ -72,8 +73,9 @@ export const getMessages = async (req: Request, res: Response) => {
 
         res.status(200).json({
             success: true,
-            messages: order.chatMessages || []
+            chatMessages: order.chatMessages || []
         });
+
     } catch (error) {
         console.error('[Livreur getMessages] Error:', error);
         res.status(500).json({ success: false, message: 'Erreur serveur' });
