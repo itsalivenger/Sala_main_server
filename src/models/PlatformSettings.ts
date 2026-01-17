@@ -2,6 +2,8 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPlatformSettings extends Document {
     delivery_price_per_weight_unit: number; // in cents
+    delivery_base_price: number; // base fee in cents
+    delivery_price_per_km: number; // distance fee in cents
     weight_unit_kg: number;
     platform_margin_percentage: number;
     minimum_payout_amount: number; // in cents
@@ -30,6 +32,8 @@ export interface IPlatformSettings extends Document {
 const PlatformSettingsSchema: Schema = new Schema(
     {
         delivery_price_per_weight_unit: { type: Number, required: true, default: 1000 },
+        delivery_base_price: { type: Number, required: true, default: 1500 },
+        delivery_price_per_km: { type: Number, required: true, default: 500 },
         weight_unit_kg: { type: Number, required: true, default: 1 },
         platform_margin_percentage: { type: Number, required: true, default: 15 },
         minimum_payout_amount: { type: Number, required: true, default: 5000 },

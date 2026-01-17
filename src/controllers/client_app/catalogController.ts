@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Product from '../../models/Product';
+import Category from '../../models/Category';
 
 /**
  * GET /api/client/catalog/products
@@ -11,7 +12,17 @@ export const getProducts = async (req: Request, res: Response) => {
         const query: any = { isAvailable: true };
 
         if (category) {
-            query.category = category;
+            // Find category by name or slug to be more robust
+            const cat = await Category.findOne({
+                $or: [{ name: category }, { slug: category }],
+                isActive: true
+            });
+            if (cat) {
+                query.category = cat.name;
+            } else {
+                // Fallback for legacy data/direct matching
+                query.category = category;
+            }
         }
 
         if (search) {
@@ -60,7 +71,7 @@ export const getProductDetails = async (req: Request, res: Response) => {
  */
 export const getCategories = async (req: Request, res: Response) => {
     try {
-        const categories = await Product.distinct('category', { isAvailable: true });
+        const categories = await Category.find({ isActive: true }).sort({ name: 1 });
         res.json({ success: true, categories });
     } catch (error) {
         console.error('[CatalogController] Error fetching categories:', error);

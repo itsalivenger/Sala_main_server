@@ -12,7 +12,7 @@ cloudinary.config({
 
 export const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: async (req, file) => {
+    params: async (req: any, file: any) => {
         return {
             folder: 'sala_assets',
             format: 'webp', // Convert all images to webp for better performance

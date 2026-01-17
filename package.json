@@ -11,6 +11,7 @@
     "dependencies": {
         "@rnmapbox/maps": "^10.2.10",
         "@types/multer": "^2.0.0",
+        "@types/pdfkit": "^0.17.4",
         "bcryptjs": "^2.4.3",
         "cloudinary": "^1.41.3",
         "cookie-parser": "^1.4.7",
@@ -25,6 +26,8 @@
         "multer": "^2.0.2",
         "multer-storage-cloudinary": "^4.0.0",
         "nodemailer": "^7.0.11",
+        "pdfkit": "^0.17.2",
+        "socket.io": "^4.8.3",
         "twilio": "^5.11.1"
     },
     "devDependencies": {
@@ -36,6 +39,7 @@
         "@types/morgan": "^1.9.10",
         "@types/node": "^20.19.27",
         "@types/nodemailer": "^7.0.4",
+        "@types/socket.io": "^3.0.1",
         "@types/twilio": "^3.19.2",
         "nodemon": "^3.1.11",
         "ts-node": "^10.9.2",

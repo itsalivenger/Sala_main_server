@@ -4,6 +4,7 @@ export interface IOrder extends Document {
     clientId: mongoose.Types.ObjectId;
     livreurId?: mongoose.Types.ObjectId;
     status: 'CREATED' | 'PAID' | 'SEARCHING_FOR_LIVREUR' | 'ASSIGNED' | 'SHOPPING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED_CLIENT' | 'CANCELLED_ADMIN' | 'REFUNDED';
+    orderId?: string;
 
     // Core Info
     items: Array<{
@@ -15,6 +16,7 @@ export interface IOrder extends Document {
         image?: string; // Added thumbnail at order time
     }>;
     totalWeight: number; // Sum of items weight
+    distance?: number; // Distance in KM
 
     // Locations
     pickupLocation?: {

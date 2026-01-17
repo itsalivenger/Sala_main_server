@@ -2,18 +2,40 @@ import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import Livreur from '../../models/Livreur';
 import Product from '../../models/Product';
+import PlatformSettings from '../../models/PlatformSettings';
 import mongoose from 'mongoose';
 
-// Business Logic constants (could be in Settings model later)
-const DELIVERY_BASE_FEE = 15; // 15 DH base
-const FEE_PER_KG = 5; // 5 DH per kg after 1st kg
-const PLATFORM_MARGIN_PERCENT = 0.1; // 10%
-const TAX_PERCENT = 0.2; // 20%
+// Logic moved into calculateOrderPricing with PlatformSettings lookup
+
+/**
+ * Helper for distance calculation (Haversine)
+ */
+const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return d;
+};
+
+const deg2rad = (deg: number) => deg * (Math.PI / 180);
 
 /**
  * Helper to calculate order pricing
  */
-const calculateOrderPricing = (items: any[]) => {
+const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
+    const settings = await PlatformSettings.findOne();
+    const baseFee = (settings?.delivery_base_price || 1500) / 100; // cents to DH
+    const pricePerKm = (settings?.delivery_price_per_km || 500) / 100;
+    const feePerKg = (settings?.delivery_price_per_weight_unit || 500) / 100;
+    const marginPercent = (settings?.platform_margin_percentage || 15) / 100;
+    const TAX_PERCENT = 0.2;
+
     let subtotal = 0;
     let totalWeight = 0;
 
@@ -22,21 +44,28 @@ const calculateOrderPricing = (items: any[]) => {
         totalWeight += (item.unitWeight || 0) * item.quantity;
     });
 
-    // Delivery Fee calculation
-    const weightFee = Math.max(0, (totalWeight - 1) * FEE_PER_KG);
-    const deliveryFee = DELIVERY_BASE_FEE + weightFee;
+    let distance = 0;
+    if (pickup && dropoff) {
+        distance = getDistanceKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+    }
 
-    const platformMargin = subtotal * PLATFORM_MARGIN_PERCENT;
+    // Delivery Fee calculation
+    const distanceFee = distance * pricePerKm;
+    const weightFee = Math.max(0, (totalWeight - 1) * feePerKg);
+    const deliveryFee = baseFee + distanceFee + weightFee;
+
+    const platformMargin = subtotal * marginPercent;
     const tax = (subtotal + deliveryFee) * TAX_PERCENT;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
     return {
         subtotal,
         totalWeight,
-        deliveryFee,
-        platformMargin,
-        tax,
-        total,
+        distance: Math.round(distance * 100) / 100,
+        deliveryFee: Math.round(deliveryFee * 100) / 100,
+        platformMargin: Math.round(platformMargin * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        total: Math.round(total * 100) / 100,
         discount: 0
     };
 };
@@ -47,12 +76,12 @@ const calculateOrderPricing = (items: any[]) => {
  */
 export const previewPricing = async (req: Request, res: Response) => {
     try {
-        const { items } = req.body;
+        const { items, pickupLocation, dropoffLocation } = req.body;
         if (!items || !Array.isArray(items)) {
             return res.status(400).json({ success: false, message: 'Panier invalide' });
         }
 
-        const pricing = calculateOrderPricing(items);
+        const pricing = await calculateOrderPricing(items, pickupLocation, dropoffLocation);
         res.json({ success: true, pricing });
     } catch (error) {
         console.error('[OrderController] Preview pricing error:', error);
@@ -85,12 +114,13 @@ export const createOrder = async (req: Request, res: Response) => {
             };
         });
 
-        const pricing = calculateOrderPricing(enrichedItems);
+        const pricing = await calculateOrderPricing(enrichedItems, pickupLocation, dropoffLocation);
 
         const newOrder = new Order({
             clientId,
             items: enrichedItems,
             totalWeight: pricing.totalWeight,
+            distance: pricing.distance,
             pickupLocation,
             dropoffLocation,
             pricing,
@@ -236,7 +266,7 @@ export const getMyOrderDetails = async (req: Request, res: Response) => {
     try {
         const clientId = (req as any).user?.id;
         const order = await Order.findOne({ _id: req.params.id, clientId })
-            .populate('livreurId', 'name phoneNumber averageRating lastLocation selfie');
+            .populate('livreurId', 'name phoneNumber averageRating lastLocation selfie vehicle');
 
         if (!order) {
             return res.status(404).json({ success: false, message: 'Commande non trouvée' });
