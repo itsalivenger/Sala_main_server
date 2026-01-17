@@ -42,7 +42,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const allowedOrigins = ['http://localhost:3000'];
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001'
+];
 if (process.env.ALLOWED_ORIGINS) {
     allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
 }
@@ -124,9 +129,14 @@ app.use((req: Request, res: Response) => {
 });
 
 // --- ERROR HANDLER ---
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error('[SALA_ERROR]', err.stack);
-    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    console.error('[SALA_ERROR] Full error:', err);
+    console.error('[SALA_ERROR] Stack:', err?.stack);
+    res.status(err.status || 500).json({ 
+        error: 'Internal Server Error', 
+        message: err.message || 'An unexpected error occurred',
+        details: typeof err === 'string' ? err : undefined
+    });
 });
 
 export default app;

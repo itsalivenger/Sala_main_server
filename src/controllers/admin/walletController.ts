@@ -22,16 +22,16 @@ export const getSettings = async (req: Request, res: Response) => {
  */
 export const updateSettings = async (req: Request, res: Response) => {
     try {
-        const { delivery_price_per_weight_unit, platform_margin_percentage, minimum_payout_amount } = req.body;
+        const body = req.body;
 
         let settings = await PlatformSettings.findOne();
         if (!settings) {
-            settings = new PlatformSettings();
+            settings = new PlatformSettings(body);
+        } else {
+            // Using a simple merge. For deep nesting, we might need a deep merge utility
+            // but Object.assign works if the structure is sent correctly from frontend
+            Object.assign(settings, body);
         }
-
-        if (delivery_price_per_weight_unit !== undefined) settings.delivery_price_per_weight_unit = delivery_price_per_weight_unit;
-        if (platform_margin_percentage !== undefined) settings.platform_margin_percentage = platform_margin_percentage;
-        if (minimum_payout_amount !== undefined) settings.minimum_payout_amount = minimum_payout_amount;
 
         await settings.save();
         res.status(200).json({ success: true, settings });

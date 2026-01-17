@@ -23,6 +23,10 @@ Serveur backend central pour la plateforme SALA, gérant les applications Client
 - Gestion des tickets de support client et livreur.
 - Historique des messages entre l'utilisateur et l'équipe opérationnelle.
 
+### 5. Configuration & Paramètres SALA
+- Gestion des constantes opérationnelles (Frais, Marges, Limites véhicules).
+- **Documentation technique :** Voir [SETTINGS_README.md](./SETTINGS_README.md).
+
 ## Stack Technique
 - **Runtime :** Node.js
 - **Framework :** Express.js

@@ -161,3 +161,58 @@ export const getCategories = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
+export const bulkDeleteProducts = async (req: any, res: Response) => {
+    try {
+        const { ids } = req.body;
+
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ success: false, message: 'No product IDs provided' });
+        }
+
+        const result = await Product.deleteMany({ _id: { $in: ids } });
+
+        // Audit Log
+        await AuditLog.create({
+            action: 'BULK_DELETE_PRODUCTS',
+            module: 'CATALOG',
+            details: `Bulk deleted ${result.deletedCount} products`,
+            performedBy: req.user?.id || req.body.adminId,
+            performedByName: req.user?.name || req.user?.email || 'Admin'
+        });
+
+        res.json({ success: true, message: `${result.deletedCount} products deleted successfully` });
+    } catch (error) {
+        console.error('[CatalogController] Error bulk deleting products:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+export const bulkUpdateProducts = async (req: any, res: Response) => {
+    try {
+        const { ids, updates } = req.body;
+
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ success: false, message: 'No product IDs provided' });
+        }
+
+        // Forbid pricing/inventory updates via bulk flow for safety
+        delete updates.price;
+        delete updates.stockQuantity;
+
+        const result = await Product.updateMany({ _id: { $in: ids } }, { $set: updates });
+
+        // Audit Log
+        await AuditLog.create({
+            action: 'BULK_UPDATE_PRODUCTS',
+            module: 'CATALOG',
+            details: `Bulk updated ${result.modifiedCount} products`,
+            performedBy: req.user?.id || req.body.adminId,
+            performedByName: req.user?.name || req.user?.email || 'Admin'
+        });
+
+        res.json({ success: true, message: `${result.modifiedCount} products updated successfully` });
+    } catch (error) {
+        console.error('[CatalogController] Error bulk updating products:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};

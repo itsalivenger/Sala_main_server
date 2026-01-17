@@ -16,6 +16,24 @@ class WalletService {
                 weight_unit_kg: 1,
                 platform_margin_percentage: 15,
                 minimum_payout_amount: 5000,
+                livreur: {
+                    min_funds_withdrawal: 5000,
+                    radius_max_km: 10,
+                    min_rating_to_work: 4,
+                    vehicle_limits: {
+                        bike: { max_weight: 10, max_volume: 0.1 },
+                        car: { max_weight: 100, max_volume: 1 },
+                        truck: { max_weight: 1000, max_volume: 10 }
+                    },
+                    max_active_orders: 3
+                },
+                client: {
+                    min_order_value: 5000,
+                    first_order_discount: 1000,
+                    referral_bonus_amount: 500,
+                    support_target_minutes: 15,
+                    free_delivery_threshold: 20000
+                }
             });
         }
         return settings;

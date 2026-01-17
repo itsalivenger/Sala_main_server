@@ -6,25 +6,10 @@ import multer from 'multer';
 // Extend Express Request to include multer properties
 interface MulterRequest extends Request {
     file?: Express.Multer.File;
+    files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
 }
 
-// Configure Multer Storage
-const storage = multer.diskStorage({
-    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-        // Ensure directory exists
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        const filename = uniqueSuffix + ext;
-        cb(null, filename);
-    }
-});
+import { storage } from '../../config/cloudinary';
 
 // Init Multer
 export const uploadMiddleware = multer({
@@ -46,23 +31,49 @@ export const uploadMiddleware = multer({
 export const uploadFile = (req: Request, res: Response) => {
     try {
         const multerReq = req as MulterRequest;
-        if (!multerReq.file) {
-            res.status(400).json({ error: 'No file uploaded' });
+
+        let files: Express.Multer.File[] = [];
+        if (multerReq.files) {
+            if (Array.isArray(multerReq.files)) {
+                files = multerReq.files;
+            } else {
+                // files is a dictionary of arrays
+                Object.values(multerReq.files).forEach(fileArray => {
+                    files.push(...fileArray);
+                });
+            }
+        } else if (multerReq.file) {
+            files = [multerReq.file];
+        }
+
+        if (files.length === 0) {
+            res.status(400).json({ error: 'No files uploaded' });
             return;
         }
 
-        const fileUrl = `/uploads/${multerReq.file.filename}`;
+        const uploadedFiles = files.map(file => {
+            // multer-storage-cloudinary provides the secure_url or path in the file object
+            const fileUrl = (file as any).path || (file as any).secure_url;
+            return {
+                url: fileUrl,
+                filename: file.filename,
+                mimetype: file.mimetype,
+                size: file.size
+            };
+        });
 
         res.status(200).json({
             success: true,
-            url: fileUrl,
-            filename: multerReq.file.filename,
-            mimetype: multerReq.file.mimetype,
-            size: multerReq.file.size
+            files: uploadedFiles,
+            // Maintain backward compatibility for single upload if needed
+            url: uploadedFiles[0].url,
+            filename: uploadedFiles[0].filename,
+            mimetype: uploadedFiles[0].mimetype,
+            size: uploadedFiles[0].size
         });
 
     } catch (error: any) {
         console.error('Upload Controller Error:', error);
-        res.status(500).json({ error: 'Failed to upload file' });
+        res.status(500).json({ error: 'Failed to upload files' });
     }
 };

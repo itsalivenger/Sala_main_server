@@ -12,6 +12,8 @@ router.post('/products', catalogController.createProduct);
 router.put('/products/:id', catalogController.updateProduct);
 router.delete('/products/:id', catalogController.deleteProduct);
 router.get('/products/:id', catalogController.getProductById);
+router.post('/products/bulk-delete', catalogController.bulkDeleteProducts);
+router.put('/products/bulk-update', catalogController.bulkUpdateProducts);
 router.get('/categories', catalogController.getCategories);
 
 export default router;

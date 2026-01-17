@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Category from '../../models/Category';
 import Product from '../../models/Product';
 import AuditLog from '../../models/AuditLog';
+import PlatformSettings from '../../models/PlatformSettings';
 
 export const getCategories = async (req: Request, res: Response) => {
     try {
@@ -20,6 +21,21 @@ export const createCategory = async (req: any, res: Response) => {
         const existing = await Category.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
         if (existing) {
             return res.status(400).json({ success: false, message: 'Category already exists' });
+        }
+
+        // Check platform limits (Active categories only)
+        const isActuallyActive = isActive !== undefined ? isActive : true;
+        if (isActuallyActive) {
+            const settings = await PlatformSettings.findOne();
+            if (settings && settings.max_categories) {
+                const activeCount = await Category.countDocuments({ isActive: true });
+                if (activeCount >= settings.max_categories) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Daily/Active category limit reached (${settings.max_categories}). Please deactivate an existing category or increase the limit in platform settings.`
+                    });
+                }
+            }
         }
 
         const category = new Category({
@@ -61,6 +77,20 @@ export const updateCategory = async (req: any, res: Response) => {
         }
 
         const oldName = category.name;
+
+        // Check platform limits if activating
+        if (isActive === true && category.isActive !== true) {
+            const settings = await PlatformSettings.findOne();
+            if (settings && settings.max_categories) {
+                const activeCount = await Category.countDocuments({ isActive: true });
+                if (activeCount >= settings.max_categories) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Active category limit reached (${settings.max_categories}). Please deactivate another category first.`
+                    });
+                }
+            }
+        }
 
         category.name = name || category.name;
         category.description = description !== undefined ? description : category.description;

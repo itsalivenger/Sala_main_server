@@ -682,3 +682,37 @@ export const savePushToken = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur Serveur' });
     }
 };
+
+/**
+ * @desc    Update Livreur Location
+ * @route   POST /api/livreur/auth/profile/location
+ * @access  Private
+ */
+export const updateLocation = async (req: Request, res: Response) => {
+    try {
+        const { lat, lng } = req.body;
+        const livreurId = (req as any).user.id;
+
+        if (lat === undefined || lng === undefined) {
+            return res.status(400).json({ success: false, message: 'Coordonnées (lat, lng) requises' });
+        }
+
+        const livreur = await Livreur.findById(livreurId);
+        if (!livreur) {
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+        }
+
+        livreur.lastLocation = {
+            lat,
+            lng,
+            timestamp: new Date()
+        };
+
+        await livreur.save();
+
+        res.status(200).json({ success: true, message: 'Position mise à jour' });
+    } catch (error) {
+        console.error('Update location error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
