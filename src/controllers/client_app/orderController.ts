@@ -27,6 +27,48 @@ const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) =
 const deg2rad = (deg: number) => deg * (Math.PI / 180);
 
 /**
+ * Find the 5 closest online and available livreurs
+ */
+const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, limit: number = 5) => {
+    try {
+        // 1. Find livreurs who are currently assigned to active orders to exclude them
+        const busyLivreurs = await Order.find({
+            status: { $in: ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'] },
+            livreurId: { $exists: true }
+        }).distinct('livreurId');
+
+        // 2. Query for online, approved livreurs who are not busy
+        const availableLivreurs = await Livreur.find({
+            isOnline: true,
+            status: 'Approved',
+            _id: { $nin: busyLivreurs },
+            'lastLocation.lat': { $exists: true },
+            'lastLocation.lng': { $exists: true }
+        }).select('_id lastLocation name');
+
+        // 3. Calculate distances and sort
+        const rankedLivreurs = availableLivreurs
+            .map(livreur => {
+                const distance = getDistanceKm(
+                    pickupLocation.lat,
+                    pickupLocation.lng,
+                    livreur.lastLocation!.lat,
+                    livreur.lastLocation!.lng
+                );
+                return { id: livreur._id, distance };
+            })
+            .sort((a, b) => a.distance - b.distance)
+            .slice(0, limit);
+
+        console.log(`[OrderController] Found ${rankedLivreurs.length} recommended drivers near pickup.`);
+        return rankedLivreurs.map(r => r.id);
+    } catch (error) {
+        console.error('[OrderController] Error finding closest livreurs:', error);
+        return [];
+    }
+};
+
+/**
  * Helper to calculate order pricing
  */
 const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
@@ -67,7 +109,9 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         platformMargin: Math.round(platformMargin * 100) / 100,
         tax: Math.round(tax * 100) / 100,
         total: Math.round(total * 100) / 100,
-        discount: 0
+        discount: 0,
+        minOrderValue: (settings?.client?.min_order_value || 5000) / 100, // cents to DH
+        freeDeliveryThreshold: (settings?.client?.free_delivery_threshold || 20000) / 100
     };
 };
 
@@ -117,6 +161,14 @@ export const createOrder = async (req: Request, res: Response) => {
 
         const pricing = await calculateOrderPricing(enrichedItems, pickupLocation, dropoffLocation);
 
+        // Enforce Minimum Order Value
+        if (pricing.subtotal < pricing.minOrderValue) {
+            return res.status(400).json({
+                success: false,
+                message: `Le montant minimum de la commande est de ${pricing.minOrderValue} DH (votre panier est de ${pricing.subtotal} DH)`
+            });
+        }
+
         const newOrder = new Order({
             clientId,
             items: enrichedItems,
@@ -138,48 +190,28 @@ export const createOrder = async (req: Request, res: Response) => {
                 timestamp: new Date(),
                 actor: 'System',
                 note: 'Recherche d\'un livreur à proximité...'
-            }]
+            }],
+            eligibleLivreurs: [] // Placeholder, will set below
         });
 
-        // 1. Identify Eligible Livreurs (Top 5 Nearest Online)
-        if (pickupLocation) {
-            const onlineLivreurs = await Livreur.find({
-                isOnline: true,
-                status: 'Approved',
-                'lastLocation.lat': { $exists: true },
-                'lastLocation.lng': { $exists: true }
-            }).select('_id lastLocation pushToken');
+        // Find 5 closest online and available drivers
+        const top5Ids = await getClosestLivreurs(pickupLocation);
+        newOrder.eligibleLivreurs = top5Ids;
 
-            const driversWithDistance = onlineLivreurs.map(driver => ({
-                id: driver._id,
-                pushToken: driver.pushToken,
-                distance: getDistanceKm(
-                    pickupLocation.lat,
-                    pickupLocation.lng,
-                    driver.lastLocation!.lat,
-                    driver.lastLocation!.lng
-                )
-            }));
+        // Trigger Push Notifications to these specific drivers
+        if (top5Ids.length > 0) {
+            const onlineLivreurs = await Livreur.find({ _id: { $in: top5Ids } }).select('pushToken');
 
-            // Sort by distance and take top 5
-            const eligibleDrivers = driversWithDistance
-                .sort((a, b) => a.distance - b.distance)
-                .slice(0, 5);
-
-            newOrder.eligibleLivreurs = eligibleDrivers.map(d => d.id as mongoose.Types.ObjectId);
-
-            // 2. Trigger Push Notifications
             const notificationTitle = 'Nouvelle commande à proximité !';
             const notificationBody = `Une commande de ${pricing.total} DH est disponible près de chez vous.`;
             const notificationData = { orderId: newOrder._id, type: 'NEW_ORDER' };
 
-            for (const driver of eligibleDrivers) {
+            onlineLivreurs.forEach(driver => {
                 if (driver.pushToken) {
-                    // Non-blocking notification sending
                     sendPushNotification(driver.pushToken, notificationTitle, notificationBody, notificationData)
-                        .catch(err => console.error(`[OrderController] Push failed for driver ${driver.id}:`, err));
+                        .catch(err => console.error(`[OrderController] Push failed for driver ${driver._id}:`, err));
                 }
-            }
+            });
         }
 
         await newOrder.save();

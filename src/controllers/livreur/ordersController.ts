@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import mongoose from 'mongoose';
 import walletService from '../../services/walletService';
-import { generateMockOrders } from '../../utils/mockOrders';
 
 /**
  * @desc    Get available orders for livreurs (PAID status, not yet assigned)
@@ -140,7 +139,6 @@ export const acceptOrder = async (req: Request, res: Response) => {
                 message: 'Cette commande n\'est plus disponible.'
             });
         }
-
         // Ensure the livreur is eligible
         const isEligible = order.eligibleLivreurs?.some(id => id.toString() === livreurId);
         if (!isEligible) {
@@ -150,21 +148,17 @@ export const acceptOrder = async (req: Request, res: Response) => {
             });
         }
 
-        if (order.livreurId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Cette commande est déjà assignée.'
-            });
-        }
+        // --- SALA MARGIN LOGIC ---
+        // Before assigning, deduct Sala's commission from livreur wallet
+        const walletResult = await walletService.deductMarginForOrder(livreurId, id);
 
-        // Deduct platform margin from wallet
-        const deductionResult = await walletService.deductMarginForOrder(id, livreurId);
-        if (!deductionResult.success) {
+        if (!walletResult.success) {
             return res.status(400).json({
                 success: false,
-                message: deductionResult.message || 'Échec de la déduction du pack Sala.'
+                message: `Solde insuffisant pour accepter cette commande. (Commission Sala requise: ${order.pricing.platformMargin} DH). Veuillez recharger votre compte.`
             });
         }
+        // -------------------------
 
         // Assign order to livreur
         order.livreurId = new mongoose.Types.ObjectId(livreurId);

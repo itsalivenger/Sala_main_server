@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IOrder extends Document {
     clientId: mongoose.Types.ObjectId;
     livreurId?: mongoose.Types.ObjectId;
+    eligibleLivreurs?: mongoose.Types.ObjectId[];
     status: 'CREATED' | 'PAID' | 'SEARCHING_FOR_LIVREUR' | 'ASSIGNED' | 'SHOPPING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED_CLIENT' | 'CANCELLED_ADMIN' | 'REFUNDED';
     orderId?: string;
 
@@ -112,6 +113,10 @@ const OrderSchema: Schema = new Schema(
             ref: 'Livreur',
             index: true
         },
+        eligibleLivreurs: [{
+            type: Schema.Types.ObjectId,
+            ref: 'Livreur'
+        }],
         status: {
             type: String,
             enum: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED', 'COMPLETED'],

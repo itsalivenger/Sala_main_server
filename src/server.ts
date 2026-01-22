@@ -6,6 +6,7 @@ import app from './app';
 
 import { Server } from 'socket.io';
 import http from 'http';
+import { startOrderExpansionJob } from './services/orderExpansionService';
 
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -23,6 +24,9 @@ const startServer = async () => {
             dbName: dbName
         });
         console.log(`✅ Connected to MongoDB (Database: ${dbName})`);
+
+        // Start Background Jobs
+        startOrderExpansionJob();
 
         const server = http.createServer(app);
         const io = new Server(server, {

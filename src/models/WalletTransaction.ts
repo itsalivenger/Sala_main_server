@@ -5,7 +5,7 @@ export enum TransactionType {
     ORDER_REVERSAL = 'ORDER_REVERSAL',
     WITHDRAWAL = 'WITHDRAWAL',
     ADMIN_ADJUSTMENT = 'ADMIN_ADJUSTMENT',
-    TOPUP = 'TOPUP',
+    TOP_UP = 'TOP_UP',
     MARGIN_DEDUCTION = 'MARGIN_DEDUCTION',
 }
 
@@ -13,7 +13,7 @@ export interface IWalletTransaction extends Document {
     walletId: mongoose.Types.ObjectId;
     type: TransactionType;
     amount: number; // in cents, can be negative
-    referenceType: 'Order' | 'Withdrawal' | 'Admin';
+    referenceType: 'Order' | 'Withdrawal' | 'Admin' | 'TopUp';
     referenceId: mongoose.Types.ObjectId;
     description?: string;
     createdAt: Date;
@@ -38,7 +38,7 @@ const WalletTransactionSchema: Schema = new Schema(
         },
         referenceType: {
             type: String,
-            enum: ['Order', 'Withdrawal', 'Admin'],
+            enum: ['Order', 'Withdrawal', 'Admin', 'TopUp'],
             required: true,
         },
         referenceId: {

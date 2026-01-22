@@ -103,34 +103,29 @@ export const requestWithdrawal = async (req: Request, res: Response) => {
 };
 
 /**
- * Top up the livreur's wallet
+ * Top-up the livreur wallet (Directly for now, should integrate gateway later)
  */
-export const topupWallet = async (req: Request, res: Response) => {
+export const topUpWallet = async (req: Request, res: Response) => {
     try {
         const livreurId = (req as any).user.id;
         const { amount, description } = req.body;
 
         if (!amount || amount <= 0) {
-            return res.status(400).json({ success: false, message: 'Invalid top-up amount' });
+            return res.status(400).json({ success: false, message: 'Montant invalide.' });
         }
 
-        const result = await walletService.topupWallet(livreurId, amount, description);
+        const result = await walletService.topUpWallet(livreurId, amount, description);
 
         if (result.success) {
             res.status(200).json({
                 success: true,
-                message: 'Wallet topped up successfully'
+                message: 'Compte rechargé avec succès.',
+                balance: (result as any).wallet?.balance
             });
         } else {
-            res.status(400).json({
-                success: false,
-                message: result.message || 'Top-up failed'
-            });
+            res.status(500).json({ success: false, message: 'Erreur lors du rechargement.' });
         }
     } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
