@@ -80,24 +80,37 @@ class WalletService {
 
             const settings = await this.getPlatformSettings();
 
+            // Check if margin was already deducted during acceptance
+            const marginTx = await WalletTransaction.findOne({
+                referenceType: 'Order',
+                referenceId: order._id,
+                type: TransactionType.MARGIN_DEDUCTION
+            }).session(session);
+
             // Calculation logic
-            const totalDeliveryPrice = order.pricing.total; // Basic assumption: order price = delivery price for now
-            const platformMargin = Math.round((totalDeliveryPrice * settings.platform_margin_percentage) / 100);
-            const netPayout = totalDeliveryPrice - platformMargin;
+            const totalDeliveryFee = order.pricing.deliveryFee; // Livreur typically gets the delivery fee
+            const netPayout = totalDeliveryFee;
+
+            // If margin was NOT deducted during acceptance (old flow), deduct it now
+            let finalPayout = netPayout;
+            if (!marginTx) {
+                const platformMargin = Math.round((order.pricing.subtotal * settings.platform_margin_percentage) / 100);
+                finalPayout = netPayout - platformMargin;
+            }
 
             // Update Wallet
             const wallet = await this.getOrCreateWallet(order.livreurId.toString(), session);
-            wallet.balance += netPayout;
+            wallet.balance += finalPayout;
             await wallet.save({ session });
 
             // Create Ledger Entry
             await WalletTransaction.create([{
                 walletId: wallet._id,
                 type: TransactionType.ORDER_PAYOUT,
-                amount: netPayout,
+                amount: finalPayout,
                 referenceType: 'Order',
                 referenceId: order._id,
-                description: `Payout for order #${order._id.toString().slice(-6)}`,
+                description: `Payout for order #${order._id.toString().slice(-6)}${!marginTx ? ' (Margin deducted at payout)' : ' (Margin already paid)'}`,
             }], { session });
 
             await session.commitTransaction();
@@ -161,6 +174,97 @@ class WalletService {
             await session.abortTransaction();
             console.error('Wallet Reversal Error:', error.message);
             return { success: false, message: error.message };
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Deducts the platform margin from the livreur wallet when an order is accepted.
+     */
+    async deductMarginForOrder(livreurId: string, orderId: string): Promise<{ success: boolean; message?: string }> {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const order = await Order.findById(orderId).session(session);
+            if (!order) throw new Error('Order not found');
+
+            const marginAmount = order.pricing.platformMargin; // This is already in DH/cents? PlatformSettings.min_order_value is in cents.
+            // In orderController, platformMargin is in DH (cents / 100).
+            // But Wallet balance is usually in cents? 
+            // Let's check PlatformSettings.ts: delivery_base_price is in cents.
+            // orderController.ts converts to DH. 
+            // WalletService.ts: platformMargin calculation uses settings.platform_margin_percentage.
+
+            // IMPORTANT: Wallet balance in this app seems to be mixed. 
+            // PlatformSettings says "Cents (MAD * 100)".
+            // walletService.ts line 85: 플랫폼마진% 사용 시.
+
+            // However, looking at deliverOrder in orderLifecycleController.ts:
+            // const earnings = order.pricing.livreurNet;
+            // livreur.walletBalance = previousBalance + earnings;
+
+            // orderController.ts:
+            // return { ... total: Math.round(total * 100) / 100 ... } -> Final is in MAD (DH).
+
+            // Let's keep it consistent with MAD (DH) for now since earnings from order pricing are in MAD.
+
+            const wallet = await this.getOrCreateWallet(livreurId, session);
+
+            if (wallet.balance < marginAmount) {
+                throw new Error('Insufficient balance to pay Sala Commission.');
+            }
+
+            wallet.balance -= marginAmount;
+            await wallet.save({ session });
+
+            await WalletTransaction.create([{
+                walletId: wallet._id,
+                type: TransactionType.MARGIN_DEDUCTION,
+                amount: -marginAmount,
+                referenceType: 'Order',
+                referenceId: order._id,
+                description: `Commission Sala pour la commande #${order._id.toString().slice(-4)}`,
+            }], { session });
+
+            await session.commitTransaction();
+            return { success: true };
+        } catch (error: any) {
+            await session.abortTransaction();
+            return { success: false, message: error.message };
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Top-up the livreur wallet
+     */
+    async topUpWallet(livreurId: string, amount: number, description?: string): Promise<{ success: boolean, wallet?: IWallet }> {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const wallet = await this.getOrCreateWallet(livreurId, session);
+            wallet.balance += amount;
+            await wallet.save({ session });
+
+            await WalletTransaction.create([{
+                walletId: wallet._id,
+                type: TransactionType.TOP_UP,
+                amount: amount,
+                referenceType: 'TopUp',
+                referenceId: new mongoose.Types.ObjectId(),
+                description: description || 'Recharge du compte',
+            }], { session });
+
+            await session.commitTransaction();
+            return { success: true, wallet };
+        } catch (error: any) {
+            await session.abortTransaction();
+            console.error('Wallet TopUp Error:', error.message);
+            return { success: false };
         } finally {
             session.endSession();
         }

@@ -108,7 +108,9 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         platformMargin: Math.round(platformMargin * 100) / 100,
         tax: Math.round(tax * 100) / 100,
         total: Math.round(total * 100) / 100,
-        discount: 0
+        discount: 0,
+        minOrderValue: (settings?.client?.min_order_value || 5000) / 100, // cents to DH
+        freeDeliveryThreshold: (settings?.client?.free_delivery_threshold || 20000) / 100
     };
 };
 
@@ -157,6 +159,14 @@ export const createOrder = async (req: Request, res: Response) => {
         });
 
         const pricing = await calculateOrderPricing(enrichedItems, pickupLocation, dropoffLocation);
+
+        // Enforce Minimum Order Value
+        if (pricing.subtotal < pricing.minOrderValue) {
+            return res.status(400).json({
+                success: false,
+                message: `Le montant minimum de la commande est de ${pricing.minOrderValue} DH (votre panier est de ${pricing.subtotal} DH)`
+            });
+        }
 
         const newOrder = new Order({
             clientId,

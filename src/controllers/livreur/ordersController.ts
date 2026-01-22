@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import mongoose from 'mongoose';
 import { generateMockOrders } from '../../utils/mockOrders';
+import walletService from '../../services/walletService';
 
 /**
  * @desc    Get available orders for livreurs (PAID status, not yet assigned)
@@ -134,13 +135,24 @@ export const acceptOrder = async (req: Request, res: Response) => {
                 message: 'Cette commande n\'est plus disponible.'
             });
         }
-
         if (order.livreurId) {
             return res.status(400).json({
                 success: false,
                 message: 'Cette commande est déjà assignée.'
             });
         }
+
+        // --- SALA MARGIN LOGIC ---
+        // Before assigning, deduct Sala's commission from livreur wallet
+        const walletResult = await walletService.deductMarginForOrder(livreurId, id);
+
+        if (!walletResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: `Solde insuffisant pour accepter cette commande. (Commission Sala requise: ${order.pricing.platformMargin} DH). Veuillez recharger votre compte.`
+            });
+        }
+        // -------------------------
 
         // Assign order to livreur
         order.livreurId = new mongoose.Types.ObjectId(livreurId);
