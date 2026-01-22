@@ -4,6 +4,7 @@ import Livreur from '../../models/Livreur';
 import Product from '../../models/Product';
 import PlatformSettings from '../../models/PlatformSettings';
 import mongoose from 'mongoose';
+import { sendPushNotification } from '../../services/notificationService';
 
 // Logic moved into calculateOrderPricing with PlatformSettings lookup
 
@@ -139,6 +140,47 @@ export const createOrder = async (req: Request, res: Response) => {
                 note: 'Recherche d\'un livreur à proximité...'
             }]
         });
+
+        // 1. Identify Eligible Livreurs (Top 5 Nearest Online)
+        if (pickupLocation) {
+            const onlineLivreurs = await Livreur.find({
+                isOnline: true,
+                status: 'Approved',
+                'lastLocation.lat': { $exists: true },
+                'lastLocation.lng': { $exists: true }
+            }).select('_id lastLocation pushToken');
+
+            const driversWithDistance = onlineLivreurs.map(driver => ({
+                id: driver._id,
+                pushToken: driver.pushToken,
+                distance: getDistanceKm(
+                    pickupLocation.lat,
+                    pickupLocation.lng,
+                    driver.lastLocation!.lat,
+                    driver.lastLocation!.lng
+                )
+            }));
+
+            // Sort by distance and take top 5
+            const eligibleDrivers = driversWithDistance
+                .sort((a, b) => a.distance - b.distance)
+                .slice(0, 5);
+
+            newOrder.eligibleLivreurs = eligibleDrivers.map(d => d.id as mongoose.Types.ObjectId);
+
+            // 2. Trigger Push Notifications
+            const notificationTitle = 'Nouvelle commande à proximité !';
+            const notificationBody = `Une commande de ${pricing.total} DH est disponible près de chez vous.`;
+            const notificationData = { orderId: newOrder._id, type: 'NEW_ORDER' };
+
+            for (const driver of eligibleDrivers) {
+                if (driver.pushToken) {
+                    // Non-blocking notification sending
+                    sendPushNotification(driver.pushToken, notificationTitle, notificationBody, notificationData)
+                        .catch(err => console.error(`[OrderController] Push failed for driver ${driver.id}:`, err));
+                }
+            }
+        }
 
         await newOrder.save();
         res.status(201).json({ success: true, orderId: newOrder._id, message: 'Commande créée avec succès' });

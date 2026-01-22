@@ -186,6 +186,97 @@ class WalletService {
             transactions
         };
     }
+
+    /**
+     * Deducts platform margin from livreur wallet when an order is accepted.
+     */
+    async deductMarginForOrder(orderId: string, livreurId: string, session?: mongoose.ClientSession): Promise<{ success: boolean; message?: string }> {
+        const internalSession = session || await mongoose.startSession();
+        if (!session) internalSession.startTransaction();
+
+        try {
+            const [order, wallet] = await Promise.all([
+                Order.findById(orderId).session(internalSession),
+                this.getOrCreateWallet(livreurId, internalSession)
+            ]);
+
+            if (!order) throw new Error('Order not found');
+            const marginAmount = Math.round((order.pricing.platformMargin || 0) * 100); // 1.2 MAD -> 120 cents
+
+            if (wallet.balance < marginAmount) {
+                throw new Error('Insufficient wallet balance to accept this order');
+            }
+
+            // Deduct from wallet
+            wallet.balance -= marginAmount;
+            await wallet.save({ session: internalSession });
+
+            // Sync with Livreur model
+            await (mongoose.model('Livreur')).findByIdAndUpdate(livreurId, {
+                walletBalance: wallet.balance
+            }).session(internalSession);
+
+            // Create Transaction Record
+            await WalletTransaction.create([{
+                walletId: wallet._id,
+                type: TransactionType.MARGIN_DEDUCTION,
+                amount: -marginAmount,
+                referenceType: 'Order',
+                referenceId: order._id,
+                description: `Commission Sala pour commande #${order._id.toString().slice(-6)}`,
+            }], { session: internalSession });
+
+            if (!session) await (internalSession as mongoose.ClientSession).commitTransaction();
+            return { success: true };
+        } catch (error: any) {
+            if (!session) await (internalSession as mongoose.ClientSession).abortTransaction();
+            console.error('Margin Deduction Error:', error.message);
+            return { success: false, message: error.message };
+        } finally {
+            if (!session) internalSession.endSession();
+        }
+    }
+
+    /**
+     * Top-up a livreur's wallet.
+     */
+    async topupWallet(livreurId: string, amountDH: number, description: string): Promise<{ success: boolean; message?: string }> {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const amountCents = Math.round(amountDH * 100);
+            const wallet = await this.getOrCreateWallet(livreurId, session);
+
+            // Update balance
+            wallet.balance += amountCents;
+            await wallet.save({ session });
+
+            // Sync with Livreur model
+            await (mongoose.model('Livreur')).findByIdAndUpdate(livreurId, {
+                walletBalance: wallet.balance
+            }).session(session);
+
+            // Create Transaction Record
+            await WalletTransaction.create([{
+                walletId: wallet._id,
+                type: TransactionType.TOPUP,
+                amount: amountCents,
+                referenceType: 'Admin', // For now, top-ups are system-triggered or admin-like
+                referenceId: new mongoose.Types.ObjectId(),
+                description: description || 'Recharge Wallet',
+            }], { session });
+
+            await session.commitTransaction();
+            return { success: true };
+        } catch (error: any) {
+            await session.abortTransaction();
+            console.error('Wallet Top-up Error:', error.message);
+            return { success: false, message: error.message };
+        } finally {
+            session.endSession();
+        }
+    }
 }
 
 export default new WalletService();

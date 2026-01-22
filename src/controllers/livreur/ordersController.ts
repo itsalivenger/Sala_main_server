@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import mongoose from 'mongoose';
+import walletService from '../../services/walletService';
 import { generateMockOrders } from '../../utils/mockOrders';
 
 /**
@@ -10,6 +11,11 @@ import { generateMockOrders } from '../../utils/mockOrders';
  */
 export const getAvailableOrders = async (req: Request, res: Response) => {
     try {
+        const livreurId = (req as any).user?.id;
+        if (!livreurId) {
+            return res.status(401).json({ success: false, message: 'Non autorisé.' });
+        }
+
         // Pagination parameters
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
@@ -18,7 +24,7 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
         // Build query for available orders
         const query = {
             status: 'SEARCHING_FOR_LIVREUR',
-            livreurId: { $exists: false }
+            eligibleLivreurs: { $in: [new mongoose.Types.ObjectId(livreurId)] }
         };
 
         // Get total count for pagination
@@ -128,10 +134,19 @@ export const acceptOrder = async (req: Request, res: Response) => {
         }
 
         // Verify order is available
-        if (order.status !== 'PAID' && order.status !== 'SEARCHING_FOR_LIVREUR') {
+        if (order.status !== 'SEARCHING_FOR_LIVREUR') {
             return res.status(400).json({
                 success: false,
                 message: 'Cette commande n\'est plus disponible.'
+            });
+        }
+
+        // Ensure the livreur is eligible
+        const isEligible = order.eligibleLivreurs?.some(id => id.toString() === livreurId);
+        if (!isEligible) {
+            return res.status(403).json({
+                success: false,
+                message: 'Vous n\'êtes pas autorisé à accepter cette commande.'
             });
         }
 
@@ -139,6 +154,15 @@ export const acceptOrder = async (req: Request, res: Response) => {
             return res.status(400).json({
                 success: false,
                 message: 'Cette commande est déjà assignée.'
+            });
+        }
+
+        // Deduct platform margin from wallet
+        const deductionResult = await walletService.deductMarginForOrder(id, livreurId);
+        if (!deductionResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: deductionResult.message || 'Échec de la déduction du pack Sala.'
             });
         }
 

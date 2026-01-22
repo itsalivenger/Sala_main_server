@@ -5,6 +5,8 @@ export enum TransactionType {
     ORDER_REVERSAL = 'ORDER_REVERSAL',
     WITHDRAWAL = 'WITHDRAWAL',
     ADMIN_ADJUSTMENT = 'ADMIN_ADJUSTMENT',
+    TOPUP = 'TOPUP',
+    MARGIN_DEDUCTION = 'MARGIN_DEDUCTION',
 }
 
 export interface IWalletTransaction extends Document {

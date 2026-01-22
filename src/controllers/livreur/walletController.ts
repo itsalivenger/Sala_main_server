@@ -101,3 +101,36 @@ export const requestWithdrawal = async (req: Request, res: Response) => {
         session.endSession();
     }
 };
+
+/**
+ * Top up the livreur's wallet
+ */
+export const topupWallet = async (req: Request, res: Response) => {
+    try {
+        const livreurId = (req as any).user.id;
+        const { amount, description } = req.body;
+
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid top-up amount' });
+        }
+
+        const result = await walletService.topupWallet(livreurId, amount, description);
+
+        if (result.success) {
+            res.status(200).json({
+                success: true,
+                message: 'Wallet topped up successfully'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: result.message || 'Top-up failed'
+            });
+        }
+    } catch (error: any) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
