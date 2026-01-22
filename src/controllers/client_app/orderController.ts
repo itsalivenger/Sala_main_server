@@ -26,6 +26,48 @@ const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) =
 const deg2rad = (deg: number) => deg * (Math.PI / 180);
 
 /**
+ * Find the 5 closest online and available livreurs
+ */
+const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, limit: number = 5) => {
+    try {
+        // 1. Find livreurs who are currently assigned to active orders to exclude them
+        const busyLivreurs = await Order.find({
+            status: { $in: ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'] },
+            livreurId: { $exists: true }
+        }).distinct('livreurId');
+
+        // 2. Query for online, approved livreurs who are not busy
+        const availableLivreurs = await Livreur.find({
+            isOnline: true,
+            status: 'Approved',
+            _id: { $nin: busyLivreurs },
+            'lastLocation.lat': { $exists: true },
+            'lastLocation.lng': { $exists: true }
+        }).select('_id lastLocation name');
+
+        // 3. Calculate distances and sort
+        const rankedLivreurs = availableLivreurs
+            .map(livreur => {
+                const distance = getDistanceKm(
+                    pickupLocation.lat,
+                    pickupLocation.lng,
+                    livreur.lastLocation!.lat,
+                    livreur.lastLocation!.lng
+                );
+                return { id: livreur._id, distance };
+            })
+            .sort((a, b) => a.distance - b.distance)
+            .slice(0, limit);
+
+        console.log(`[OrderController] Found ${rankedLivreurs.length} recommended drivers near pickup.`);
+        return rankedLivreurs.map(r => r.id);
+    } catch (error) {
+        console.error('[OrderController] Error finding closest livreurs:', error);
+        return [];
+    }
+};
+
+/**
  * Helper to calculate order pricing
  */
 const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
@@ -137,8 +179,13 @@ export const createOrder = async (req: Request, res: Response) => {
                 timestamp: new Date(),
                 actor: 'System',
                 note: 'Recherche d\'un livreur à proximité...'
-            }]
+            }],
+            eligibleLivreurs: [] // Placeholder, will set below
         });
+
+        // Recommend 5 closest drivers
+        const top5 = await getClosestLivreurs(pickupLocation);
+        newOrder.eligibleLivreurs = top5;
 
         await newOrder.save();
         res.status(201).json({ success: true, orderId: newOrder._id, message: 'Commande créée avec succès' });
