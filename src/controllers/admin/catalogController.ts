@@ -57,7 +57,7 @@ export const createProduct = async (req: any, res: Response) => {
             images,
             tags,
             isActive: isActive !== undefined ? isActive : true,
-            price: 0,
+            price: req.body.price || 0,
             stockQuantity: 0,
         });
 
@@ -85,8 +85,7 @@ export const updateProduct = async (req: any, res: Response) => {
         const { id } = req.params;
         const updates = req.body;
 
-        // Forbid pricing/inventory updates via this flow
-        delete updates.price;
+        // Forbid inventory updates via this flow
         delete updates.stockQuantity;
 
         const product = await Product.findByIdAndUpdate(id, updates, { new: true });
@@ -195,8 +194,7 @@ export const bulkUpdateProducts = async (req: any, res: Response) => {
             return res.status(400).json({ success: false, message: 'No product IDs provided' });
         }
 
-        // Forbid pricing/inventory updates via bulk flow for safety
-        delete updates.price;
+        // Forbid inventory updates via bulk flow for safety
         delete updates.stockQuantity;
 
         const result = await Product.updateMany({ _id: { $in: ids } }, { $set: updates });
