@@ -59,17 +59,17 @@ export const requestWithdrawal = async (req: Request, res: Response) => {
         const { amount } = req.body;
 
         if (!amount || amount <= 0) {
-            throw new Error('Invalid withdrawal amount');
+            throw new Error('Montant de retrait invalide');
         }
 
         const settings = await walletService.getPlatformSettings();
         if (amount < settings.minimum_payout_amount) {
-            throw new Error(`Minimum withdrawal amount is ${settings.minimum_payout_amount / 100} MAD`);
+            throw new Error(`Le montant minimum de retrait est de ${settings.minimum_payout_amount / 100} MAD`);
         }
 
         const wallet = await walletService.getOrCreateWallet(livreurId, session);
         if (wallet.balance < amount) {
-            throw new Error('Insufficient balance');
+            throw new Error('Solde insuffisant');
         }
 
         // Atomically deduct balance
@@ -83,13 +83,13 @@ export const requestWithdrawal = async (req: Request, res: Response) => {
             amount: -amount,
             referenceType: 'Withdrawal',
             referenceId: new mongoose.Types.ObjectId(), // Placeholder for actual withdrawal record if needed
-            description: 'Withdrawal request initiated',
+            description: 'Demande de retrait initiée',
         }], { session });
 
         await session.commitTransaction();
         res.status(200).json({
             success: true,
-            message: 'Withdrawal request initiated successfully'
+            message: 'Demande de retrait enregistrée avec succès'
         });
     } catch (error: any) {
         await session.abortTransaction();

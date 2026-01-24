@@ -236,6 +236,7 @@ class WalletService {
             balance: wallet.balance,
             currency: wallet.currency,
             minimumPayoutAmount: settings.minimum_payout_amount,
+            minFundsWithdrawal: settings.livreur?.min_funds_withdrawal || 0,
             transactions
         };
     }
