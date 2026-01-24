@@ -166,7 +166,7 @@ export const acceptOrder = async (req: Request, res: Response) => {
         if (!walletResult.success) {
             return res.status(400).json({
                 success: false,
-                message: `Solde insuffisant pour accepter cette commande. (Commission Sala requise: ${order.pricing.platformMargin} DH). Veuillez recharger votre compte.`
+                message: walletResult.message || `Solde insuffisant pour accepter cette commande. (Commission Sala requise: ${order.pricing.platformMargin} DH).`
             });
         }
         // -------------------------

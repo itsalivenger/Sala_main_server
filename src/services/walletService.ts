@@ -258,7 +258,7 @@ class WalletService {
             const marginAmount = Math.round((order.pricing.platformMargin || 0) * 100); // 1.2 MAD -> 120 cents
 
             if (wallet.balance < marginAmount) {
-                throw new Error('Insufficient wallet balance to accept this order');
+                throw new Error('Solde insuffisant pour accepter cette commande');
             }
 
             // Deduct from wallet
