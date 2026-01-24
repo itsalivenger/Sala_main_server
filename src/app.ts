@@ -28,6 +28,7 @@ import catalogRoutes from './routes/client_app/catalog';
 import clientOrderRoutes from './routes/client_app/orders';
 import clientSettingsRoutes from './routes/client_app/settings';
 import clientMessageRoutes from './routes/client_app/messages';
+import clientNotificationRoutes from './routes/client_app/notifications';
 
 // Livreur App Routes
 import livreurAuthRoutes from './routes/livreur/auth';
@@ -106,6 +107,7 @@ app.use('/api/client/catalog', catalogRoutes);
 app.use('/api/client/orders', clientOrderRoutes);
 app.use('/api/client/orders', clientMessageRoutes); // Message routes nested under orders
 app.use('/api/client/settings', clientSettingsRoutes);
+app.use('/api/client/notifications', clientNotificationRoutes);
 
 // --- STATIC ASSETS ---
 app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
@@ -132,8 +134,8 @@ app.use((req: Request, res: Response) => {
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error('[SALA_ERROR] Full error:', err);
     console.error('[SALA_ERROR] Stack:', err?.stack);
-    res.status(err.status || 500).json({ 
-        error: 'Internal Server Error', 
+    res.status(err.status || 500).json({
+        error: 'Internal Server Error',
         message: err.message || 'An unexpected error occurred',
         details: typeof err === 'string' ? err : undefined
     });
