@@ -145,8 +145,14 @@ export const acceptOrder = async (req: Request, res: Response) => {
             });
         }
         // Ensure the livreur is eligible
-        const isEligible = order.eligibleLivreurs?.some(id => id.toString() === livreurId);
-        if (!isEligible) {
+        // Eligible if:
+        // 1. Explicitly in the list
+        // 2. List is empty (public order)
+        // 3. List doesn't exist (legacy/public)
+        const isListEmpty = !order.eligibleLivreurs || order.eligibleLivreurs.length === 0;
+        const isInList = order.eligibleLivreurs?.some(id => id.toString() === livreurId);
+
+        if (!isListEmpty && !isInList) {
             return res.status(403).json({
                 success: false,
                 message: 'Vous n\'êtes pas autorisé à accepter cette commande.'
