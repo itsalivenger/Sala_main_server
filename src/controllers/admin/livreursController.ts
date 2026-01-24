@@ -17,6 +17,7 @@ export const getAllLivreurs = async (req: Request, res: Response) => {
             id: l._id,
             name: l.name || 'Inconnu',
             phoneNumber: l.phoneNumber,
+            email: l.email,
             status: l.status,
             city: l.city,
             walletBalance: l.walletBalance || 0,

@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 interface MailOptions {
     to?: string | string[];
     bcc?: string | string[];
+    replyTo?: string;
     subject: string;
     html: string;
     text?: string;
@@ -49,7 +50,7 @@ class MailService {
         try {
             const mailOptions = {
                 from: `"${this.fromName}" <${this.fromAddress}>`,
-                replyTo: this.replyTo,
+                replyTo: options.replyTo || this.replyTo,
                 to: options.to,
                 bcc: options.bcc,
                 subject: options.subject,

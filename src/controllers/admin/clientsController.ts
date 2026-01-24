@@ -17,6 +17,7 @@ export const getAllClients = async (req: Request, res: Response) => {
                 id: client._id,
                 name: client.name || 'Inconnu',
                 phoneNumber: client.phoneNumber,
+                email: client.email,
                 status: client.status,
                 totalOrders,
                 lastLogin: client.lastLogin,

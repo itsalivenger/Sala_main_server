@@ -53,28 +53,33 @@ export const deleteSubscriber = async (req: Request, res: Response) => {
     }
 };
 
-// Send newsletter broadcast (Admin)
+// Send newsletter broadcast or individual email (Admin)
 export const sendNewsletter = async (req: Request, res: Response) => {
     try {
-        const { subject, content } = req.body;
+        const { subject, content, recipientEmail, noReply } = req.body;
 
         if (!subject || !content) {
             res.status(400).json({ error: 'Sujet et contenu requis' });
             return;
         }
 
-        const subscribers = await Subscriber.find({});
-        if (subscribers.length === 0) {
-            res.status(400).json({ error: 'Aucun abonné trouvé' });
-            return;
+        let emails: string[] = [];
+        if (recipientEmail) {
+            emails = [recipientEmail];
+        } else {
+            const subscribers = await Subscriber.find({});
+            if (subscribers.length === 0) {
+                res.status(400).json({ error: 'Aucun abonné trouvé' });
+                return;
+            }
+            emails = subscribers.map(s => s.email);
         }
 
-        const emails = subscribers.map(s => s.email);
-
-        // Send via MailService (which handles branding and no-reply headers)
+        // Send via MailService
         const success = await mailService.sendMail({
-            bcc: emails,
+            [recipientEmail ? 'to' : 'bcc']: recipientEmail || emails,
             subject: subject,
+            replyTo: noReply ? 'noreply@sala.com' : 'support@sala.com',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
                     <div style="text-align: center; margin-bottom: 20px;">
@@ -85,19 +90,19 @@ export const sendNewsletter = async (req: Request, res: Response) => {
                     </div>
                     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eeeeee; font-size: 12px; color: #888888; text-align: center;">
                         <p>© ${new Date().getFullYear()} SALA. Tous droits réservés.</p>
-                        <p>Vous recevez cet email car vous êtes abonné à notre newsletter.</p>
+                        <p>Vous recevez cet email en tant qu'utilisateur ou abonné de SALA.</p>
                     </div>
                 </div>
             `,
         });
 
         if (!success) {
-            throw new Error('MailService failed to send broadcast');
+            throw new Error('MailService failed to send email');
         }
 
-        res.json({ message: `Newsletter envoyée avec succès à ${emails.length} abonnés.` });
+        res.json({ message: recipientEmail ? `Email envoyé avec succès à ${recipientEmail}` : `Newsletter envoyée avec succès à ${emails.length} abonnés.` });
     } catch (error: any) {
-        console.error('Newsletter Broadcast Error:', error);
-        res.status(500).json({ error: 'Échec de l\'envoi de la newsletter. Vérifiez les paramètres SMTP.' });
+        console.error('Email Send Error:', error);
+        res.status(500).json({ error: 'Échec de l\'envoi de l\'email. Vérifiez les paramètres SMTP.' });
     }
 };

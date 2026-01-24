@@ -95,7 +95,6 @@ export interface IOrder extends Document {
         details: string; // JSON string or text details
         timestamp: Date;
     }>;
-    eligibleLivreurs: mongoose.Types.ObjectId[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -115,7 +114,8 @@ const OrderSchema: Schema = new Schema(
         },
         eligibleLivreurs: [{
             type: Schema.Types.ObjectId,
-            ref: 'Livreur'
+            ref: 'Livreur',
+            index: true
         }],
         status: {
             type: String,
@@ -222,12 +222,7 @@ const OrderSchema: Schema = new Schema(
                 details: String,
                 timestamp: { type: Date, default: Date.now }
             }
-        ],
-        eligibleLivreurs: [{
-            type: Schema.Types.ObjectId,
-            ref: 'Livreur',
-            index: true
-        }]
+        ]
     },
     {
         timestamps: true,

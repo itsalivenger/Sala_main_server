@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IClient extends Document {
     phoneNumber: string;
+    email?: string;
     name?: string;
     city?: string;
     otp?: string;
@@ -53,6 +54,12 @@ const ClientSchema: Schema = new Schema(
             required: [true, 'Please provide a phone number'],
             unique: true,
             trim: true,
+        },
+        email: {
+            type: String,
+            trim: true,
+            lowercase: true,
+            match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
         },
         name: {
             type: String,

@@ -150,7 +150,7 @@ export const acceptOrder = async (req: Request, res: Response) => {
 
         // --- SALA MARGIN LOGIC ---
         // Before assigning, deduct Sala's commission from livreur wallet
-        const walletResult = await walletService.deductMarginForOrder(livreurId, id);
+        const walletResult = await walletService.deductMarginForOrder(id, livreurId);
 
         if (!walletResult.success) {
             return res.status(400).json({

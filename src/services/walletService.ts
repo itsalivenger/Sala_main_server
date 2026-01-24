@@ -179,81 +179,30 @@ class WalletService {
         }
     }
 
-    /**
-     * Deducts the platform margin from the livreur wallet when an order is accepted.
-     */
-    async deductMarginForOrder(livreurId: string, orderId: string): Promise<{ success: boolean; message?: string }> {
-        const session = await mongoose.startSession();
-        session.startTransaction();
 
-        try {
-            const order = await Order.findById(orderId).session(session);
-            if (!order) throw new Error('Order not found');
-
-            const marginAmount = order.pricing.platformMargin; // This is already in DH/cents? PlatformSettings.min_order_value is in cents.
-            // In orderController, platformMargin is in DH (cents / 100).
-            // But Wallet balance is usually in cents? 
-            // Let's check PlatformSettings.ts: delivery_base_price is in cents.
-            // orderController.ts converts to DH. 
-            // WalletService.ts: platformMargin calculation uses settings.platform_margin_percentage.
-
-            // IMPORTANT: Wallet balance in this app seems to be mixed. 
-            // PlatformSettings says "Cents (MAD * 100)".
-            // walletService.ts line 85: 플랫폼마진% 사용 시.
-
-            // However, looking at deliverOrder in orderLifecycleController.ts:
-            // const earnings = order.pricing.livreurNet;
-            // livreur.walletBalance = previousBalance + earnings;
-
-            // orderController.ts:
-            // return { ... total: Math.round(total * 100) / 100 ... } -> Final is in MAD (DH).
-
-            // Let's keep it consistent with MAD (DH) for now since earnings from order pricing are in MAD.
-
-            const wallet = await this.getOrCreateWallet(livreurId, session);
-
-            if (wallet.balance < marginAmount) {
-                throw new Error('Insufficient balance to pay Sala Commission.');
-            }
-
-            wallet.balance -= marginAmount;
-            await wallet.save({ session });
-
-            await WalletTransaction.create([{
-                walletId: wallet._id,
-                type: TransactionType.MARGIN_DEDUCTION,
-                amount: -marginAmount,
-                referenceType: 'Order',
-                referenceId: order._id,
-                description: `Commission Sala pour la commande #${order._id.toString().slice(-4)}`,
-            }], { session });
-
-            await session.commitTransaction();
-            return { success: true };
-        } catch (error: any) {
-            await session.abortTransaction();
-            return { success: false, message: error.message };
-        } finally {
-            session.endSession();
-        }
-    }
 
     /**
      * Top-up the livreur wallet
      */
-    async topUpWallet(livreurId: string, amount: number, description?: string): Promise<{ success: boolean, wallet?: IWallet }> {
+    async topUpWallet(livreurId: string, amountDH: number, description?: string): Promise<{ success: boolean; wallet?: IWallet; message?: string }> {
         const session = await mongoose.startSession();
         session.startTransaction();
 
         try {
+            const amountCents = Math.round(amountDH * 100);
             const wallet = await this.getOrCreateWallet(livreurId, session);
-            wallet.balance += amount;
+            wallet.balance += amountCents;
             await wallet.save({ session });
+
+            // Sync with Livreur model
+            await mongoose.model('Livreur').findByIdAndUpdate(livreurId, {
+                walletBalance: wallet.balance
+            }).session(session);
 
             await WalletTransaction.create([{
                 walletId: wallet._id,
                 type: TransactionType.TOP_UP,
-                amount: amount,
+                amount: amountCents,
                 referenceType: 'TopUp',
                 referenceId: new mongoose.Types.ObjectId(),
                 description: description || 'Recharge du compte',
@@ -264,7 +213,7 @@ class WalletService {
         } catch (error: any) {
             await session.abortTransaction();
             console.error('Wallet TopUp Error:', error.message);
-            return { success: false };
+            return { success: false, message: error.message };
         } finally {
             session.endSession();
         }
@@ -341,46 +290,7 @@ class WalletService {
         }
     }
 
-    /**
-     * Top-up a livreur's wallet.
-     */
-    async topupWallet(livreurId: string, amountDH: number, description: string): Promise<{ success: boolean; message?: string }> {
-        const session = await mongoose.startSession();
-        session.startTransaction();
 
-        try {
-            const amountCents = Math.round(amountDH * 100);
-            const wallet = await this.getOrCreateWallet(livreurId, session);
-
-            // Update balance
-            wallet.balance += amountCents;
-            await wallet.save({ session });
-
-            // Sync with Livreur model
-            await (mongoose.model('Livreur')).findByIdAndUpdate(livreurId, {
-                walletBalance: wallet.balance
-            }).session(session);
-
-            // Create Transaction Record
-            await WalletTransaction.create([{
-                walletId: wallet._id,
-                type: TransactionType.TOPUP,
-                amount: amountCents,
-                referenceType: 'Admin', // For now, top-ups are system-triggered or admin-like
-                referenceId: new mongoose.Types.ObjectId(),
-                description: description || 'Recharge Wallet',
-            }], { session });
-
-            await session.commitTransaction();
-            return { success: true };
-        } catch (error: any) {
-            await session.abortTransaction();
-            console.error('Wallet Top-up Error:', error.message);
-            return { success: false, message: error.message };
-        } finally {
-            session.endSession();
-        }
-    }
 }
 
 export default new WalletService();
