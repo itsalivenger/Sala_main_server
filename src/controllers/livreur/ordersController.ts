@@ -21,9 +21,14 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
         const skip = (page - 1) * limit;
 
         // Build query for available orders
+        // Match if livreur is in eligible list OR if list is empty (public/expanded)
         const query = {
             status: 'SEARCHING_FOR_LIVREUR',
-            eligibleLivreurs: { $in: [new mongoose.Types.ObjectId(livreurId)] }
+            $or: [
+                { eligibleLivreurs: { $in: [new mongoose.Types.ObjectId(livreurId)] } },
+                { eligibleLivreurs: { $size: 0 } },
+                { eligibleLivreurs: { $exists: false } }
+            ]
         };
 
         // Get total count for pagination
