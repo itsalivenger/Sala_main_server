@@ -13,13 +13,14 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     }
 
     if (!token) {
-        console.warn('[AUTH_MIDDLEWARE] No token found in Authorization header or cookies');
+        console.warn(`[AUTH_MIDDLEWARE] No token found. Headers: ${JSON.stringify(req.headers.authorization ? 'Present' : 'Missing')}`);
         res.status(401).json({ success: false, message: 'Not authorized to access this route' });
         return;
     }
 
     try {
         const secret = process.env.JWT_SECRET || 'secret';
+        console.log(`[AUTH_MIDDLEWARE] Attempting to verify token: ${token.substring(0, 10)}...${token.substring(token.length - 10)}`);
         const decoded = jwt.verify(token, secret) as any;
         (req as any).user = decoded;
 
