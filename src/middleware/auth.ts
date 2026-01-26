@@ -13,7 +13,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     }
 
     if (!token) {
-        console.warn('[AUTH_MIDDLEWARE] No token found in Authorization header or cookies');
+        console.warn(`[AUTH_MIDDLEWARE] No token found. Headers: ${JSON.stringify(req.headers.authorization ? 'Present' : 'Missing')}`);
         res.status(401).json({ success: false, message: 'Not authorized to access this route' });
         return;
     }

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import mongoose from 'mongoose';
 import walletService from '../../services/walletService';
+import Client from '../../models/Client';
+import { sendPushNotification } from '../../services/notificationService';
 
 /**
  * @desc    Get available orders for livreurs (PAID status, not yet assigned)
@@ -366,6 +368,26 @@ export const sendOrderMessage = async (req: Request, res: Response) => {
         });
 
         await order.save();
+
+        // Send push notification to client
+        try {
+            const client = await Client.findById(order.clientId).select('pushToken');
+            if (client?.pushToken) {
+                await sendPushNotification(
+                    client.pushToken,
+                    'Nouveau message de votre livreur',
+                    text.length > 100 ? text.substring(0, 100) + '...' : text,
+                    {
+                        type: 'CHAT_MESSAGE',
+                        orderId: order._id.toString(),
+                        sender: 'Livreur'
+                    }
+                );
+            }
+        } catch (pushErr) {
+            console.error('[LIVREUR_CHAT] Push notification error:', pushErr);
+            // Don't fail the message if push fails
+        }
 
         res.status(200).json({
             success: true,
