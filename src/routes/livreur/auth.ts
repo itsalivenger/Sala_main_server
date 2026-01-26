@@ -23,5 +23,7 @@ router.get('/complaints/:id', protect, authController.getComplaintById);
 router.post('/complaints/:id/messages', protect, authController.addComplaintMessage);
 router.post('/push-token', protect, authController.savePushToken);
 router.post('/profile/location', protect, authController.updateLocation);
+router.get('/profile/payment-credentials', protect, authController.getPaymentCredentials);
+router.put('/profile/payment-credentials', protect, authController.updatePaymentCredentials);
 
 export default router;
