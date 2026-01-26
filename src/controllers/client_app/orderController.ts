@@ -240,12 +240,12 @@ export const getMyOrders = async (req: Request, res: Response) => {
 
         if (type === 'history') {
             query.status = {
-                $in: ['COMPLETED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED']
+                $in: ['DELIVERED', 'COMPLETED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED']
             };
         } else {
             // Default to 'active' orders if type is 'active' or undefined
             query.status = {
-                $in: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED']
+                $in: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT']
             };
         }
 
