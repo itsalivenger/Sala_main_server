@@ -98,20 +98,23 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const deliveryFee = baseFee + distanceFee + weightFee;
 
     const platformMargin = subtotal * marginPercent;
+    const livreurNet = deliveryFee; // Livreur gets the delivery fee
     const tax = (subtotal + deliveryFee) * TAX_PERCENT;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
+    // Return everything in CENTS (multiply by 100) as the system expects
     return {
-        subtotal,
+        subtotal: Math.round(subtotal * 100),
         totalWeight,
         distance: Math.round(distance * 100) / 100,
-        deliveryFee: Math.round(deliveryFee * 100) / 100,
-        platformMargin: Math.round(platformMargin * 100) / 100,
-        tax: Math.round(tax * 100) / 100,
-        total: Math.round(total * 100) / 100,
+        deliveryFee: Math.round(deliveryFee * 100),
+        platformMargin: Math.round(platformMargin * 100),
+        livreurNet: Math.round(livreurNet * 100),
+        tax: Math.round(tax * 100),
+        total: Math.round(total * 100),
         discount: 0,
-        minOrderValue: (settings?.client?.min_order_value || 5000) / 100, // cents to DH
-        freeDeliveryThreshold: (settings?.client?.free_delivery_threshold || 20000) / 100
+        minOrderValue: settings?.client?.min_order_value || 5000, // Already in cents
+        freeDeliveryThreshold: settings?.client?.free_delivery_threshold || 20000 // Already in cents
     };
 };
 
