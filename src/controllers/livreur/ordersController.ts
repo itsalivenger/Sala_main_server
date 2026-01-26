@@ -119,33 +119,45 @@ export const getOrderDetails = async (req: Request, res: Response) => {
  * @access  Private/Livreur
  */
 export const acceptOrder = async (req: Request, res: Response) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const { id } = req.params;
         const livreurId = (req as any).user?.id;
 
         if (!livreurId) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(401).json({ success: false, message: 'Non autorisé.' });
         }
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({ success: false, message: 'ID de commande invalide.' });
         }
 
         console.log(`[ACCEPT_ORDER] Attempting to accept order ID: ${id} by livreur: ${livreurId}`);
-        const order = await Order.findById(id);
+        const order = await Order.findById(id).session(session);
         console.log(`[ACCEPT_ORDER] Database search result: ${order ? 'Found' : 'Not Found'}`);
 
         if (!order) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
         }
 
         // Verify order is available
         if (order.status !== 'SEARCHING_FOR_LIVREUR') {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({
                 success: false,
                 message: 'Cette commande n\'est plus disponible.'
             });
         }
+
         // Ensure the livreur is eligible
         // Eligible if:
         // 1. Explicitly in the list
@@ -155,6 +167,8 @@ export const acceptOrder = async (req: Request, res: Response) => {
         const isInList = order.eligibleLivreurs?.some(id => id.toString() === livreurId);
 
         if (!isListEmpty && !isInList) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(403).json({
                 success: false,
                 message: 'Vous n\'êtes pas autorisé à accepter cette commande.'
@@ -162,10 +176,12 @@ export const acceptOrder = async (req: Request, res: Response) => {
         }
 
         // --- SALA MARGIN LOGIC ---
-        // Before assigning, deduct Sala's commission from livreur wallet
-        const walletResult = await walletService.deductMarginForOrder(id, livreurId);
+        // Pass the session to deductMarginForOrder to use the same transaction
+        const walletResult = await walletService.deductMarginForOrder(id, livreurId, session);
 
         if (!walletResult.success) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({
                 success: false,
                 message: walletResult.message || `Solde insuffisant pour accepter cette commande. (Commission Sala requise: ${order.pricing.platformMargin} DH).`
@@ -185,7 +201,10 @@ export const acceptOrder = async (req: Request, res: Response) => {
             note: 'Commande acceptée par le livreur'
         });
 
-        await order.save();
+        await order.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
 
         res.status(200).json({
             success: true,
@@ -193,6 +212,8 @@ export const acceptOrder = async (req: Request, res: Response) => {
             order
         });
     } catch (error: any) {
+        await session.abortTransaction();
+        session.endSession();
         console.error('[LIVREUR_ORDERS] Accept Error:', error);
         res.status(500).json({ success: false, message: 'Erreur lors de l\'acceptation de la commande.' });
     }
