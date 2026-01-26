@@ -230,7 +230,7 @@ class WalletService {
 
         const transactions = await WalletTransaction.find({ walletId: wallet._id })
             .sort({ createdAt: -1 })
-            .limit(20);
+            .limit(5);
 
         return {
             balance: wallet.balance,
