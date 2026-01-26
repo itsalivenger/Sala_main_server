@@ -73,11 +73,23 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
  */
 const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
     const settings = await PlatformSettings.findOne();
+    console.log(settings)
+    if (!settings) {
+        console.warn('[Pricing] No PlatformSettings found in DB, using hardcoded fallbacks.');
+    } else {
+        console.log('[Pricing] Using DB settings:', {
+            base: settings.delivery_base_price,
+            km: settings.delivery_price_per_km,
+            weight: settings.delivery_price_per_weight_unit,
+            margin: settings.platform_margin_percentage
+        });
+    }
+
     const baseFee = (settings?.delivery_base_price || 1500) / 100; // cents to DH
     const pricePerKm = (settings?.delivery_price_per_km || 500) / 100;
     const feePerKg = (settings?.delivery_price_per_weight_unit || 500) / 100;
     const marginPercent = (settings?.platform_margin_percentage || 15) / 100;
-    const TAX_PERCENT = 0.2;
+    const TAX_PERCENT = 0.2; // 20%
 
     let subtotal = 0;
     let totalWeight = 0;
@@ -98,9 +110,20 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const deliveryFee = baseFee + distanceFee + weightFee;
 
     const platformMargin = subtotal * marginPercent;
-    const livreurNet = deliveryFee; // Livreur gets the delivery fee
+
+    // Tax is 20% of (Subtotal + DeliveryFee)
+    // NOTE: If margin is a service fee for the client, tax should arguably apply to it too, 
+    // but we'll stick to the current formula unless requested otherwise.
     const tax = (subtotal + deliveryFee) * TAX_PERCENT;
     const total = subtotal + deliveryFee + platformMargin + tax;
+
+    console.log('[Pricing] Calculation result (DH):', {
+        subtotal,
+        deliveryFee,
+        platformMargin,
+        tax,
+        total
+    });
 
     // Return everything in CENTS (multiply by 100) as the system expects
     return {
@@ -109,12 +132,12 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         distance: Math.round(distance * 100) / 100,
         deliveryFee: Math.round(deliveryFee * 100),
         platformMargin: Math.round(platformMargin * 100),
-        livreurNet: Math.round(livreurNet * 100),
+        livreurNet: Math.round(deliveryFee * 100), // Driver gets the delivery fee
         tax: Math.round(tax * 100),
         total: Math.round(total * 100),
         discount: 0,
-        minOrderValue: settings?.client?.min_order_value || 5000, // Already in cents
-        freeDeliveryThreshold: settings?.client?.free_delivery_threshold || 20000 // Already in cents
+        minOrderValue: settings?.client?.min_order_value || 5000,
+        freeDeliveryThreshold: settings?.client?.free_delivery_threshold || 20000
     };
 };
 
