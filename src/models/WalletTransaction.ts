@@ -12,7 +12,7 @@ export enum TransactionType {
 export interface IWalletTransaction extends Document {
     walletId: mongoose.Types.ObjectId;
     type: TransactionType;
-    amount: number; // in cents, can be negative
+    amount: number; // in DH, can be negative
     referenceType: 'Order' | 'Withdrawal' | 'Admin' | 'TopUp';
     referenceId: mongoose.Types.ObjectId;
     description?: string;

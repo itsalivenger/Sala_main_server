@@ -9,7 +9,7 @@ export interface ILivreur extends Document {
     isVerified: boolean;
     status: 'Pending' | 'Active' | 'Inactive' | 'Suspended' | 'Approved';
     pushToken?: string;
-    walletBalance: number;
+    walletBalance: number; // in DH
     isOnline: boolean;
     lastLocation?: {
         lat: number;
@@ -17,6 +17,15 @@ export interface ILivreur extends Document {
         timestamp: Date;
     };
     rejectionReason?: string;
+
+    // Payment credentials for payouts
+    paymentCredentials?: {
+        accountHolderName: string;
+        bankName: string;
+        rib: string; // 24-digit RIB (Relevé d'Identité Bancaire)
+        iban?: string; // Optional IBAN
+        isVerified: boolean;
+    };
 
     // Registration workflow fields
     registrationStep: 'phone_verification' | 'basic_info' | 'documents' | 'vehicle_photos' | 'vehicle_papers' | 'selfie' | 'completed';
@@ -272,6 +281,13 @@ const LivreurSchema: Schema = new Schema(
             }
         ],
         averageRating: { type: Number, default: 0 },
+        paymentCredentials: {
+            accountHolderName: String,
+            bankName: String,
+            rib: String,
+            iban: String,
+            isVerified: { type: Boolean, default: false }
+        },
     },
     {
         timestamps: true,

@@ -20,7 +20,7 @@ const mockOrders = [
                 quantity: 1,
                 unitWeight: 2.0,
                 totalWeight: 2.0,
-                price: 8500_00 // 8500 MAD in cents
+                price: 8500 // 8500 MAD (DH)
             }
         ],
         totalWeight: 2.0,
@@ -35,12 +35,12 @@ const mockOrders = [
             lng: -7.6661
         },
         pricing: {
-            subtotal: 8500_00,
-            deliveryFee: 50_00,
-            platformMargin: 15_00,
-            livreurNet: 35_00,
+            subtotal: 8500,
+            deliveryFee: 50,
+            platformMargin: 15,
+            livreurNet: 35,
             tax: 0,
-            total: 8550_00,
+            total: 8550,
             discount: 0
         },
         paymentStatus: 'Captured',
@@ -53,14 +53,14 @@ const mockOrders = [
                 quantity: 1,
                 unitWeight: 0.5,
                 totalWeight: 0.5,
-                price: 12000_00
+                price: 12000
             },
             {
                 name: 'Coque de protection',
                 quantity: 1,
                 unitWeight: 0.1,
                 totalWeight: 0.1,
-                price: 150_00
+                price: 150
             }
         ],
         totalWeight: 0.6,
@@ -75,12 +75,12 @@ const mockOrders = [
             lng: -7.6298
         },
         pricing: {
-            subtotal: 12150_00,
-            deliveryFee: 40_00,
-            platformMargin: 12_00,
-            livreurNet: 28_00,
+            subtotal: 12150,
+            deliveryFee: 40,
+            platformMargin: 12,
+            livreurNet: 28,
             tax: 0,
-            total: 12190_00,
+            total: 12190,
             discount: 0
         },
         paymentStatus: 'Captured',
@@ -93,7 +93,7 @@ const mockOrders = [
                 quantity: 1,
                 unitWeight: 18.0,
                 totalWeight: 18.0,
-                price: 6500_00
+                price: 6500
             }
         ],
         totalWeight: 18.0,
@@ -108,12 +108,12 @@ const mockOrders = [
             lng: -7.5756
         },
         pricing: {
-            subtotal: 6500_00,
-            deliveryFee: 80_00,
-            platformMargin: 25_00,
-            livreurNet: 55_00,
+            subtotal: 6500,
+            deliveryFee: 80,
+            platformMargin: 25,
+            livreurNet: 55,
             tax: 0,
-            total: 6580_00,
+            total: 6580,
             discount: 0
         },
         paymentStatus: 'Captured',
@@ -126,7 +126,7 @@ const mockOrders = [
                 quantity: 2,
                 unitWeight: 0.8,
                 totalWeight: 1.6,
-                price: 1800_00
+                price: 1800
             }
         ],
         totalWeight: 1.6,
@@ -141,12 +141,12 @@ const mockOrders = [
             lng: -7.6509
         },
         pricing: {
-            subtotal: 1800_00,
-            deliveryFee: 45_00,
-            platformMargin: 13_00,
-            livreurNet: 32_00,
+            subtotal: 1800,
+            deliveryFee: 45,
+            platformMargin: 13,
+            livreurNet: 32,
             tax: 0,
-            total: 1845_00,
+            total: 1845,
             discount: 0
         },
         paymentStatus: 'Captured',
@@ -159,14 +159,14 @@ const mockOrders = [
                 quantity: 1,
                 unitWeight: 3.5,
                 totalWeight: 3.5,
-                price: 2200_00
+                price: 2200
             },
             {
                 name: 'Capsules café (x100)',
                 quantity: 2,
                 unitWeight: 0.5,
                 totalWeight: 1.0,
-                price: 400_00
+                price: 400
             }
         ],
         totalWeight: 4.5,
@@ -181,12 +181,12 @@ const mockOrders = [
             lng: -7.6389
         },
         pricing: {
-            subtotal: 3000_00,
-            deliveryFee: 55_00,
-            platformMargin: 18_00,
-            livreurNet: 37_00,
+            subtotal: 3000,
+            deliveryFee: 55,
+            platformMargin: 18,
+            livreurNet: 37,
             tax: 0,
-            total: 3055_00,
+            total: 3055,
             discount: 0
         },
         paymentStatus: 'Captured',

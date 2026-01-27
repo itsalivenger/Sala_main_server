@@ -64,7 +64,7 @@ export const requestWithdrawal = async (req: Request, res: Response) => {
 
         const settings = await walletService.getPlatformSettings();
         if (amount < settings.minimum_payout_amount) {
-            throw new Error(`Le montant minimum de retrait est de ${settings.minimum_payout_amount / 100} MAD`);
+            throw new Error(`Le montant minimum de retrait est de ${settings.minimum_payout_amount} MAD`);
         }
 
         const wallet = await walletService.getOrCreateWallet(livreurId, session);

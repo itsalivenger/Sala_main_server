@@ -1,14 +1,14 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPlatformSettings extends Document {
-    delivery_price_per_weight_unit: number; // in cents
-    delivery_base_price: number; // base fee in cents
-    delivery_price_per_km: number; // distance fee in cents
-    weight_unit_kg: number;
-    platform_margin_percentage: number;
-    minimum_payout_amount: number; // in cents
+    delivery_price_per_weight_unit: number; // Note: All numeric values represent DH (Dirhams) and are stored as floats.
+    delivery_base_price: number;            // e.g., 15.00 DH
+    delivery_price_per_km: number;          // e.g., 5.00 DH
+    weight_unit_kg: number;                 // e.g., 1 KG
+    platform_margin_percentage: number;     // e.g., 15%
+    minimum_payout_amount: number;          // e.g., 50.00 DH
     livreur: {
-        min_funds_withdrawal: number;
+        min_funds_withdrawal: number;       // e.g., 50.00 DH
         radius_max_km: number;
         min_rating_to_work: number;
         vehicle_limits: {
@@ -23,11 +23,11 @@ export interface IPlatformSettings extends Document {
         max_active_orders: number;
     };
     client: {
-        min_order_value: number;
-        first_order_discount: number;
-        referral_bonus_amount: number;
+        min_order_value: number;            // e.g., 50.00 DH
+        first_order_discount: number;       // e.g., 10.00 DH
+        referral_bonus_amount: number;       // e.g., 5.00 DH
         support_target_minutes: number;
-        free_delivery_threshold: number;
+        free_delivery_threshold: number;    // e.g., 200.00 DH
     };
     max_categories: number;
     updatedAt: Date;
@@ -35,14 +35,14 @@ export interface IPlatformSettings extends Document {
 
 const PlatformSettingsSchema: Schema = new Schema(
     {
-        delivery_price_per_weight_unit: { type: Number, required: true, default: 1000 },
-        delivery_base_price: { type: Number, required: true, default: 1500 },
-        delivery_price_per_km: { type: Number, required: true, default: 500 },
+        delivery_price_per_weight_unit: { type: Number, required: true, default: 10 },
+        delivery_base_price: { type: Number, required: true, default: 15 },
+        delivery_price_per_km: { type: Number, required: true, default: 5 },
         weight_unit_kg: { type: Number, required: true, default: 1 },
         platform_margin_percentage: { type: Number, required: true, default: 15 },
-        minimum_payout_amount: { type: Number, required: true, default: 5000 },
+        minimum_payout_amount: { type: Number, required: true, default: 50 },
         livreur: {
-            min_funds_withdrawal: { type: Number, default: 5000 },
+            min_funds_withdrawal: { type: Number, default: 50 },
             radius_max_km: { type: Number, default: 10 },
             min_rating_to_work: { type: Number, default: 4 },
             vehicle_limits: {
@@ -66,11 +66,11 @@ const PlatformSettingsSchema: Schema = new Schema(
             max_active_orders: { type: Number, default: 3 }
         },
         client: {
-            min_order_value: { type: Number, default: 5000 },
-            first_order_discount: { type: Number, default: 1000 },
-            referral_bonus_amount: { type: Number, default: 500 },
+            min_order_value: { type: Number, default: 50 },
+            first_order_discount: { type: Number, default: 10 },
+            referral_bonus_amount: { type: Number, default: 5 },
             support_target_minutes: { type: Number, default: 15 },
-            free_delivery_threshold: { type: Number, default: 20000 }
+            free_delivery_threshold: { type: Number, default: 200 }
         },
         max_categories: { type: Number, default: 20 }
     },

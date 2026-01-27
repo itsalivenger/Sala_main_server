@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IWallet extends Document {
     livreurId: mongoose.Types.ObjectId;
-    balance: number; // in cents
+    balance: number; // in DH
     currency: string;
     createdAt: Date;
     updatedAt: Date;

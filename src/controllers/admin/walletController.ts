@@ -24,6 +24,10 @@ export const updateSettings = async (req: Request, res: Response) => {
     try {
         const body = req.body;
 
+        if (body.platform_margin_percentage !== undefined) {
+            body.platform_margin_percentage = Math.min(100, body.platform_margin_percentage);
+        }
+
         let settings = await PlatformSettings.findOne();
         if (!settings) {
             settings = new PlatformSettings(body);

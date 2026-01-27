@@ -273,7 +273,7 @@ export const deliverOrder = async (req: Request, res: Response) => {
             livreur.walletBalance = previousBalance + earnings;
             await livreur.save({ session });
 
-            console.log(`[WALLET] Credited ${earnings / 100} MAD to livreur ${livreurId}. New balance: ${livreur.walletBalance / 100} MAD`);
+            console.log(`[WALLET] Credited ${earnings} MAD to livreur ${livreurId}. New balance: ${livreur.walletBalance} MAD`);
         }
 
         await session.commitTransaction();
@@ -339,7 +339,7 @@ export const cancelOrder = async (req: Request, res: Response) => {
         // Calculate penalty (example: 10 MAD for cancellations after pickup)
         let penalty = 0;
         if (order.status === 'PICKED_UP' || order.status === 'IN_TRANSIT') {
-            penalty = 10_00; // 10 MAD in cents
+            penalty = 10; // 10 MAD (DH)
         }
 
         // Update order
@@ -373,7 +373,7 @@ export const cancelOrder = async (req: Request, res: Response) => {
                 const previousBalance = livreur.walletBalance || 0;
                 livreur.walletBalance = previousBalance - penalty;
                 await livreur.save({ session });
-                console.log(`[WALLET] Applied penalty ${penalty / 100} MAD to livreur ${livreurId}`);
+                console.log(`[WALLET] Applied penalty ${penalty} MAD to livreur ${livreurId}`);
             }
         }
 

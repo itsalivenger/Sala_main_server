@@ -716,3 +716,79 @@ export const updateLocation = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur Serveur' });
     }
 };
+
+/**
+ * @desc    Get Livreur Payment Credentials
+ * @route   GET /api/livreur/auth/profile/payment-credentials
+ * @access  Private
+ */
+export const getPaymentCredentials = async (req: Request, res: Response) => {
+    try {
+        const livreurId = (req as any).user.id;
+        const livreur = await Livreur.findById(livreurId);
+
+        if (!livreur) {
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+        }
+
+        res.status(200).json({
+            success: true,
+            paymentCredentials: livreur.paymentCredentials || null
+        });
+    } catch (error) {
+        console.error('Get payment credentials error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
+
+/**
+ * @desc    Update Livreur Payment Credentials
+ * @route   PUT /api/livreur/auth/profile/payment-credentials
+ * @access  Private
+ */
+export const updatePaymentCredentials = async (req: Request, res: Response) => {
+    try {
+        const { accountHolderName, bankName, rib, iban } = req.body;
+        const livreurId = (req as any).user.id;
+
+        if (!accountHolderName || !bankName || !rib) {
+            return res.status(400).json({
+                success: false,
+                message: 'Le nom du titulaire, le nom de la banque et le RIB sont obligatoires.'
+            });
+        }
+
+        // Validate RIB (24 digits for Morocco)
+        const ribRegex = /^\d{24}$/;
+        if (!ribRegex.test(rib)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Le RIB doit contenir exactement 24 chiffres.'
+            });
+        }
+
+        const livreur = await Livreur.findById(livreurId);
+        if (!livreur) {
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé' });
+        }
+
+        livreur.paymentCredentials = {
+            accountHolderName: accountHolderName.trim(),
+            bankName: bankName.trim(),
+            rib: rib.trim(),
+            iban: iban ? iban.trim() : undefined,
+            isVerified: false // Admin needs to verify this later
+        };
+
+        await livreur.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Informations de paiement mises à jour avec succès',
+            paymentCredentials: livreur.paymentCredentials
+        });
+    } catch (error) {
+        console.error('Update payment credentials error:', error);
+        res.status(500).json({ success: false, message: 'Erreur Serveur' });
+    }
+};
