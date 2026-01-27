@@ -15,8 +15,8 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     }
 
     if (!token) {
-        console.warn(`[AUTH_MIDDLEWARE] No token found. Headers: ${JSON.stringify(req.headers.authorization ? 'Present' : 'Missing')}`);
-        res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+        console.warn(`[AUTH_MIDDLEWARE] No token found. Headers: ${JSON.stringify(req.headers.authorization ? 'Present' : 'Missing')}, Query: ${req.query.token ? 'Present' : 'Missing'}`);
+        res.status(401).json({ success: false, message: 'Not authorized: No token provided' });
         return;
     }
 
@@ -43,7 +43,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
         next();
     } catch (err: any) {
         console.error('[AUTH_MIDDLEWARE] Token verification failed:', err.message);
-        res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+        res.status(401).json({ success: false, message: 'Not authorized: Invalid token' });
     }
 };
 
