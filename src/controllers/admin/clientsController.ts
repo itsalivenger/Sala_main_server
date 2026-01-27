@@ -97,3 +97,33 @@ export const updateClientStatus = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur lors de la mise à jour du statut.' });
     }
 };
+
+/**
+ * @desc    Permanently delete client and all associated data
+ * @route   DELETE /api/admin/clients/:id
+ * @access  Private/Admin
+ */
+export const deleteClient = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const client = await Client.findById(id);
+        if (!client) {
+            return res.status(404).json({ success: false, message: 'Client non trouvé.' });
+        }
+
+        // 1. Delete all associated orders
+        await Order.deleteMany({ clientId: id });
+
+        // 2. Delete the client
+        await Client.findByIdAndDelete(id);
+
+        res.status(200).json({
+            success: true,
+            message: 'Client et toutes ses données supprimés avec succès.'
+        });
+    } catch (error: any) {
+        console.error('[ADMIN_CLIENTS] Delete Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la suppression du client.' });
+    }
+};

@@ -4,7 +4,9 @@ import {
     getLivreurProfile,
     updateLivreurKYC,
     adjustLivreurWallet,
-    getLivreurActivity
+    adjustLivreurWallet,
+    getLivreurActivity,
+    deleteLivreur
 } from '../../controllers/admin/livreursController';
 import { protect, authorize } from '../../middleware/auth';
 
@@ -18,7 +20,8 @@ router.route('/')
     .get(getAllLivreurs);
 
 router.route('/:id')
-    .get(getLivreurProfile);
+    .get(getLivreurProfile)
+    .delete(deleteLivreur);
 
 router.route('/:id/kyc')
     .put(updateLivreurKYC);

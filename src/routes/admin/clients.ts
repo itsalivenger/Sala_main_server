@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllClients, getClientProfile, updateClientStatus } from '../../controllers/admin/clientsController';
+import { getAllClients, getClientProfile, updateClientStatus, deleteClient } from '../../controllers/admin/clientsController';
 import { protect, authorize } from '../../middleware/auth';
 
 const router = Router();
@@ -12,7 +12,8 @@ router.route('/')
     .get(getAllClients);
 
 router.route('/:id')
-    .get(getClientProfile);
+    .get(getClientProfile)
+    .delete(deleteClient);
 
 router.route('/:id/status')
     .put(updateClientStatus);

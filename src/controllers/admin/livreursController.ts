@@ -76,6 +76,25 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
         const averageRating = livreur.averageRating || 0;
 
         // Rich Stats Calculation
+        // Calculate Rating Breakdown dynamically
+        const ratingBreakdown: Record<string, number> = {
+            '5': 0,
+            '4': 0,
+            '3': 0,
+            '2': 0,
+            '1': 0
+        };
+
+        if (Array.isArray(reviews)) {
+            reviews.forEach((r: any) => {
+                const rating = Math.round(Number(r.rating));
+                if (rating >= 1 && rating <= 5) {
+                    ratingBreakdown[String(rating)]++;
+                }
+            });
+        }
+
+        // Rich Stats Calculation
         const richStats = {
             totalDistance: (livreur as any).totalDistance || 0, // km (stored in model if available)
             onTimeRate: (livreur as any).onTimeRate || 0, // %
@@ -84,13 +103,7 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
             avgEarningsPerOrder: completedOrders > 0 ? (monthlyEarnings / completedOrders).toFixed(1) : 0,
             monthlyGrowth: (livreur as any).monthlyGrowth || 0, // % trend
             topZone: (livreur as any).topZone || "N/A",
-            ratingBreakdown: (livreur as any).ratingBreakdown || {
-                5: 0,
-                4: 0,
-                3: 0,
-                2: 0,
-                1: 0
-            }
+            ratingBreakdown
         };
 
         // Avg Delivery Time (simplified calculation)
@@ -255,5 +268,52 @@ export const getLivreurActivity = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('[ADMIN_LIVREURS] Activity Error:', error);
         res.status(500).json({ success: false, message: 'Erreur lors de la récupération de l\'activité.' });
+    }
+};
+
+/**
+ * @desc    Permanently delete livreur and associated data
+ * @route   DELETE /api/admin/livreurs/:id
+ * @access  Private/Admin
+ */
+export const deleteLivreur = async (req: Request, res: Response) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { id } = req.params;
+
+        const livreur = await Livreur.findById(id).session(session);
+        if (!livreur) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé.' });
+        }
+
+        // 1. Find and Delete Wallet & Transactions
+        const Wallet = mongoose.model('Wallet');
+        const Transaction = mongoose.model('WalletTransaction');
+
+        const wallet = await Wallet.findOne({ livreurId: id }).session(session);
+        if (wallet) {
+            await Transaction.deleteMany({ walletId: wallet._id }).session(session);
+            await Wallet.findByIdAndDelete(wallet._id).session(session);
+        }
+
+        // 2. Disconnect Orders (Set livreurId to null)
+        await Order.updateMany({ livreurId: id }, { $set: { livreurId: null } }).session(session);
+
+        // 3. Delete Livreur
+        await Livreur.findByIdAndDelete(id).session(session);
+
+        await session.commitTransaction();
+        res.status(200).json({
+            success: true,
+            message: 'Livreur et ses données financières supprimés. Les commandes ont été dissociées.'
+        });
+    } catch (error: any) {
+        await session.abortTransaction();
+        console.error('[ADMIN_LIVREURS] Delete Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la suppression du livreur.' });
+    } finally {
+        session.endSession();
     }
 };
