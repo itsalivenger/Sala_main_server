@@ -4,7 +4,7 @@ export interface IOrder extends Document {
     clientId: mongoose.Types.ObjectId;
     livreurId?: mongoose.Types.ObjectId;
     eligibleLivreurs?: mongoose.Types.ObjectId[];
-    status: 'CREATED' | 'PAID' | 'SEARCHING_FOR_LIVREUR' | 'ASSIGNED' | 'SHOPPING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED_CLIENT' | 'CANCELLED_ADMIN' | 'REFUNDED';
+    status: 'CREATED' | 'PAID' | 'SEARCHING_FOR_LIVREUR' | 'ASSIGNED' | 'SHOPPING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED_CLIENT' | 'CANCELLED_ADMIN' | 'REFUNDED' | 'COMPLETED';
     orderId?: string;
 
     // Core Info

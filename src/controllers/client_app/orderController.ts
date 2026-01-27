@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import Livreur from '../../models/Livreur';
+import Client from '../../models/Client';
 import Product from '../../models/Product';
 import PlatformSettings from '../../models/PlatformSettings';
 import mongoose from 'mongoose';
@@ -73,16 +74,8 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
  */
 const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
     const settings = await PlatformSettings.findOne();
-    console.log(settings)
     if (!settings) {
         console.warn('[Pricing] No PlatformSettings found in DB, using hardcoded fallbacks.');
-    } else {
-        console.log('[Pricing] Using DB settings:', {
-            base: settings.delivery_base_price,
-            km: settings.delivery_price_per_km,
-            weight: settings.delivery_price_per_weight_unit,
-            margin: settings.platform_margin_percentage
-        });
     }
 
     const baseFee = (settings?.delivery_base_price || 1500) / 100; // cents to DH
@@ -116,14 +109,6 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     // but we'll stick to the current formula unless requested otherwise.
     const tax = (subtotal + deliveryFee) * TAX_PERCENT;
     const total = subtotal + deliveryFee + platformMargin + tax;
-
-    console.log('[Pricing] Calculation result (DH):', {
-        subtotal,
-        deliveryFee,
-        platformMargin,
-        tax,
-        total
-    });
 
     // Return everything in CENTS (multiply by 100) as the system expects
     return {
@@ -429,6 +414,90 @@ export const cancelOrder = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('[OrderController] Cancel order error:', error);
         res.status(500).json({ success: false, message: 'Erreur lors de l\'annulation' });
+    }
+};
+
+/**
+ * POST /api/client/orders/:id/confirm
+ * Client confirms delivery and gives rating/review
+ */
+export const confirmOrder = async (req: Request, res: Response) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { id } = req.params;
+        const { rating, comment } = req.body;
+        const clientId = (req as any).user?.id;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'ID de commande invalide.' });
+        }
+
+        const order = await Order.findById(id).session(session);
+
+        if (!order) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+        }
+
+        // Verify ownership
+        if (order.clientId.toString() !== clientId) {
+            await session.abortTransaction();
+            return res.status(403).json({ success: false, message: 'Non autorisé.' });
+        }
+
+        // Only allow confirm if status is DELIVERED
+        if (order.status !== 'DELIVERED') {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: `La commande ne peut pas être confirmée car son statut est : ${order.status}`
+            });
+        }
+
+        // Update Order Status
+        order.status = 'COMPLETED';
+        order.timeline.push({
+            status: 'COMPLETED',
+            timestamp: new Date(),
+            actor: 'Client',
+            note: 'Livraison confirmée par le client'
+        });
+
+        await order.save({ session });
+
+        // Add review to Livreur if rating is provided
+        if (rating && order.livreurId) {
+            const livreur = await Livreur.findById(order.livreurId).session(session);
+            if (livreur) {
+                const client = await Client.findById(clientId).select('name');
+
+                livreur.reviews.push({
+                    clientId: new mongoose.Types.ObjectId(clientId),
+                    clientName: client?.name || 'Client',
+                    rating: Number(rating),
+                    comment: comment || '',
+                    createdAt: new Date()
+                });
+
+                // Recalculate average rating
+                const totalRatings = livreur.reviews.reduce((sum, rev) => sum + rev.rating, 0);
+                livreur.averageRating = Number((totalRatings / livreur.reviews.length).toFixed(1));
+
+                await livreur.save({ session });
+            }
+        }
+
+        await session.commitTransaction();
+        res.status(200).json({ success: true, message: 'Commande confirmée avec succès.', order });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('[OrderController] Confirm order error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la confirmation de la commande.' });
+    } finally {
+        session.endSession();
     }
 };
 

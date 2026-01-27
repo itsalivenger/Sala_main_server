@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createOrder, getMyOrders, getMyOrderDetails, previewPricing, cancelOrder, getOrderMapData, sendOrderMessage, getOrderMessages } from '../../controllers/client_app/orderController';
+import { createOrder, getMyOrders, getMyOrderDetails, previewPricing, cancelOrder, getOrderMapData, sendOrderMessage, getOrderMessages, confirmOrder } from '../../controllers/client_app/orderController';
 import { downloadReceipt } from '../../controllers/client_app/receiptController';
 import { protect } from '../../middleware/auth';
 
@@ -18,5 +18,6 @@ router.get('/:id/receipt', protect, downloadReceipt);
 // router.post('/:id/messages', protect, sendOrderMessage);
 router.get('/:id', protect, getMyOrderDetails);
 router.post('/:id/cancel', protect, cancelOrder);
+router.post('/:id/confirm', protect, confirmOrder);
 
 export default router;
