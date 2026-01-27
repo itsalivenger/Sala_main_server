@@ -85,9 +85,9 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         });
     }
 
-    const baseFee = (settings?.delivery_base_price || 1500) / 100; // cents to DH
-    const pricePerKm = (settings?.delivery_price_per_km || 500) / 100;
-    const feePerKg = (settings?.delivery_price_per_weight_unit || 500) / 100;
+    const baseFee = settings?.delivery_base_price || 15; // Now in DH
+    const pricePerKm = settings?.delivery_price_per_km || 5;
+    const feePerKg = settings?.delivery_price_per_weight_unit || 5;
     const marginPercent = (settings?.platform_margin_percentage || 15) / 100;
     const TAX_PERCENT = 0.2; // 20%
 
@@ -112,8 +112,6 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const platformMargin = subtotal * marginPercent;
 
     // Tax is 20% of (Subtotal + DeliveryFee)
-    // NOTE: If margin is a service fee for the client, tax should arguably apply to it too, 
-    // but we'll stick to the current formula unless requested otherwise.
     const tax = (subtotal + deliveryFee) * TAX_PERCENT;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
@@ -125,19 +123,19 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         total
     });
 
-    // Return everything in CENTS (multiply by 100) as the system expects
+    // Return everything in DH (Floats) as requested
     return {
-        subtotal: Math.round(subtotal * 100),
-        totalWeight,
-        distance: Math.round(distance * 100) / 100,
-        deliveryFee: Math.round(deliveryFee * 100),
-        platformMargin: Math.round(platformMargin * 100),
-        livreurNet: Math.round(deliveryFee * 100), // Driver gets the delivery fee
-        tax: Math.round(tax * 100),
-        total: Math.round(total * 100),
+        subtotal: parseFloat(subtotal.toFixed(2)),
+        totalWeight: parseFloat(totalWeight.toFixed(2)),
+        distance: parseFloat(distance.toFixed(2)),
+        deliveryFee: parseFloat(deliveryFee.toFixed(2)),
+        platformMargin: parseFloat(platformMargin.toFixed(2)),
+        livreurNet: parseFloat(deliveryFee.toFixed(2)), // Driver gets the delivery fee
+        tax: parseFloat(tax.toFixed(2)),
+        total: parseFloat(total.toFixed(2)),
         discount: 0,
-        minOrderValue: settings?.client?.min_order_value || 5000,
-        freeDeliveryThreshold: settings?.client?.free_delivery_threshold || 20000
+        minOrderValue: settings?.client?.min_order_value || 50,
+        freeDeliveryThreshold: settings?.client?.free_delivery_threshold || 200
     };
 };
 

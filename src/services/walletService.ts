@@ -12,12 +12,12 @@ class WalletService {
         let settings = await PlatformSettings.findOne();
         if (!settings) {
             settings = await PlatformSettings.create({
-                delivery_price_per_weight_unit: 1000,
+                delivery_price_per_weight_unit: 10,
                 weight_unit_kg: 1,
                 platform_margin_percentage: 15,
-                minimum_payout_amount: 5000,
+                minimum_payout_amount: 50,
                 livreur: {
-                    min_funds_withdrawal: 5000,
+                    min_funds_withdrawal: 50,
                     radius_max_km: 10,
                     min_rating_to_work: 4,
                     vehicle_limits: {
@@ -28,11 +28,11 @@ class WalletService {
                     max_active_orders: 3
                 },
                 client: {
-                    min_order_value: 5000,
-                    first_order_discount: 1000,
-                    referral_bonus_amount: 500,
+                    min_order_value: 50,
+                    first_order_discount: 10,
+                    referral_bonus_amount: 5,
                     support_target_minutes: 15,
-                    free_delivery_threshold: 20000
+                    free_delivery_threshold: 200
                 }
             });
         }
@@ -71,7 +71,6 @@ class WalletService {
 
             // Check if payout already exists for this order
             const existingTx = await WalletTransaction.findOne({
-                referenceType: 'Order',
                 referenceId: order._id,
                 type: TransactionType.ORDER_PAYOUT
             }).session(session);
@@ -82,25 +81,24 @@ class WalletService {
 
             // Check if margin was already deducted during acceptance
             const marginTx = await WalletTransaction.findOne({
-                referenceType: 'Order',
                 referenceId: order._id,
                 type: TransactionType.MARGIN_DEDUCTION
             }).session(session);
 
             // Calculation logic
-            const totalDeliveryFee = order.pricing.deliveryFee; // Livreur typically gets the delivery fee
+            const totalDeliveryFee = order.pricing.deliveryFee; // Now in DH
             const netPayout = totalDeliveryFee;
 
             // If margin was NOT deducted during acceptance (old flow), deduct it now
             let finalPayout = netPayout;
             if (!marginTx) {
-                const platformMargin = Math.round((order.pricing.subtotal * settings.platform_margin_percentage) / 100);
+                const platformMargin = parseFloat((order.pricing.subtotal * settings.platform_margin_percentage / 100).toFixed(2));
                 finalPayout = netPayout - platformMargin;
             }
 
             // Update Wallet
             const wallet = await this.getOrCreateWallet(order.livreurId.toString(), session);
-            wallet.balance += finalPayout;
+            wallet.balance = parseFloat((wallet.balance + finalPayout).toFixed(2));
             await wallet.save({ session });
 
             // Create Ledger Entry
@@ -133,7 +131,6 @@ class WalletService {
 
         try {
             const originalTx = await WalletTransaction.findOne({
-                referenceType: 'Order',
                 referenceId: orderId,
                 type: TransactionType.ORDER_PAYOUT
             }).session(session);
@@ -142,7 +139,6 @@ class WalletService {
 
             // Check if already reversed
             const existingReversal = await WalletTransaction.findOne({
-                referenceType: 'Order',
                 referenceId: orderId,
                 type: TransactionType.ORDER_REVERSAL
             }).session(session);
@@ -155,7 +151,7 @@ class WalletService {
             const reversalAmount = -originalTx.amount;
 
             // Update Wallet
-            wallet.balance += reversalAmount;
+            wallet.balance = parseFloat((wallet.balance + reversalAmount).toFixed(2));
             await wallet.save({ session });
 
             // Create Reversal Ledger Entry
@@ -179,8 +175,6 @@ class WalletService {
         }
     }
 
-
-
     /**
      * Top-up the livreur wallet
      */
@@ -189,9 +183,8 @@ class WalletService {
         session.startTransaction();
 
         try {
-            const amountCents = Math.round(amountDH * 100);
             const wallet = await this.getOrCreateWallet(livreurId, session);
-            wallet.balance += amountCents;
+            wallet.balance = parseFloat((wallet.balance + amountDH).toFixed(2));
             await wallet.save({ session });
 
             // Sync with Livreur model
@@ -202,7 +195,7 @@ class WalletService {
             await WalletTransaction.create([{
                 walletId: wallet._id,
                 type: TransactionType.TOP_UP,
-                amount: amountCents,
+                amount: amountDH,
                 referenceType: 'TopUp',
                 referenceId: new mongoose.Types.ObjectId(),
                 description: description || 'Recharge du compte',
@@ -255,14 +248,14 @@ class WalletService {
             ]);
 
             if (!order) throw new Error('Order not found');
-            const marginAmount = Math.round((order.pricing.platformMargin || 0) * 100); // 1.2 MAD -> 120 cents
+            const marginAmount = order.pricing.platformMargin || 0; // Now in DH
 
             if (wallet.balance < marginAmount) {
                 throw new Error('Solde insuffisant pour accepter cette commande');
             }
 
             // Deduct from wallet
-            wallet.balance -= marginAmount;
+            wallet.balance = parseFloat((wallet.balance - marginAmount).toFixed(2));
             await wallet.save({ session: internalSession });
 
             // Sync with Livreur model

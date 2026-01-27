@@ -9,7 +9,7 @@ export interface ILivreur extends Document {
     isVerified: boolean;
     status: 'Pending' | 'Active' | 'Inactive' | 'Suspended' | 'Approved';
     pushToken?: string;
-    walletBalance: number;
+    walletBalance: number; // in DH
     isOnline: boolean;
     lastLocation?: {
         lat: number;
