@@ -5,7 +5,7 @@ import { protect, authorize } from '../../middleware/auth';
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize('Livreur'));
+router.use(authorize('livreur'));
 
 router.get('/', getPerformanceStats);
 
