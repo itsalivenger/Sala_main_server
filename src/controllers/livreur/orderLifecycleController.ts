@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import Livreur from '../../models/Livreur';
 import mongoose from 'mongoose';
+import walletService from '../../services/walletService';
 
 /**
  * @desc    Mark order as shopping (for market/shopping orders)
@@ -265,15 +266,10 @@ export const deliverOrder = async (req: Request, res: Response) => {
 
         await order.save({ session });
 
-        // Credit livreur wallet
-        const livreur = await Livreur.findById(livreurId).session(session);
-        if (livreur) {
-            const earnings = order.pricing.livreurNet;
-            const previousBalance = livreur.walletBalance || 0;
-            livreur.walletBalance = previousBalance + earnings;
-            await livreur.save({ session });
-
-            console.log(`[WALLET] Credited ${earnings} MAD to livreur ${livreurId}. New balance: ${livreur.walletBalance} MAD`);
+        // Credit livreur wallet using the WalletService for transaction consistency
+        const walletResult = await walletService.creditWalletForOrder(id, session);
+        if (!walletResult.success) {
+            throw new Error(walletResult.message || 'Erreur lors du crédit du portefeuille.');
         }
 
         await session.commitTransaction();
@@ -366,14 +362,11 @@ export const cancelOrder = async (req: Request, res: Response) => {
 
         await order.save({ session });
 
-        // Apply penalty if any
+        // Apply penalty if any using WalletService for consistency
         if (penalty > 0) {
-            const livreur = await Livreur.findById(livreurId).session(session);
-            if (livreur) {
-                const previousBalance = livreur.walletBalance || 0;
-                livreur.walletBalance = previousBalance - penalty;
-                await livreur.save({ session });
-                console.log(`[WALLET] Applied penalty ${penalty} MAD to livreur ${livreurId}`);
+            const walletResult = await walletService.deductPenaltyForOrder(id, livreurId, penalty, session);
+            if (!walletResult.success) {
+                throw new Error(walletResult.message || 'Erreur lors de l\'application de la pénalité.');
             }
         }
 
