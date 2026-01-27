@@ -57,14 +57,13 @@ class WalletService {
 
     /**
      * Credits the livreur wallet following an order completion.
-     * Everything is wrapped in a Mongoose session for ACID safety.
      */
-    async creditWalletForOrder(orderId: string): Promise<{ success: boolean; message?: string }> {
-        const session = await mongoose.startSession();
-        session.startTransaction();
+    async creditWalletForOrder(orderId: string, session?: mongoose.ClientSession): Promise<{ success: boolean; message?: string }> {
+        const internalSession = session || await mongoose.startSession();
+        if (!session) internalSession.startTransaction();
 
         try {
-            const order = await Order.findById(orderId).session(session);
+            const order = await Order.findById(orderId).session(internalSession);
             if (!order) throw new Error('Order not found');
             if (order.status !== 'DELIVERED') throw new Error('Order is not completed');
             if (!order.livreurId) throw new Error('No livreur assigned to this order');
@@ -73,7 +72,7 @@ class WalletService {
             const existingTx = await WalletTransaction.findOne({
                 referenceId: order._id,
                 type: TransactionType.ORDER_PAYOUT
-            }).session(session);
+            }).session(internalSession);
 
             if (existingTx) throw new Error('Payout already processed for this order');
 
@@ -83,10 +82,10 @@ class WalletService {
             const marginTx = await WalletTransaction.findOne({
                 referenceId: order._id,
                 type: TransactionType.MARGIN_DEDUCTION
-            }).session(session);
+            }).session(internalSession);
 
             // Calculation logic
-            const totalDeliveryFee = order.pricing.deliveryFee; // Now in DH
+            const totalDeliveryFee = order.pricing.deliveryFee;
             const netPayout = totalDeliveryFee;
 
             // If margin was NOT deducted during acceptance (old flow), deduct it now
@@ -97,9 +96,14 @@ class WalletService {
             }
 
             // Update Wallet
-            const wallet = await this.getOrCreateWallet(order.livreurId.toString(), session);
+            const wallet = await this.getOrCreateWallet(order.livreurId.toString(), internalSession);
             wallet.balance = parseFloat((wallet.balance + finalPayout).toFixed(2));
-            await wallet.save({ session });
+            await wallet.save({ session: internalSession });
+
+            // Sync with Livreur model
+            await (mongoose.model('Livreur')).findByIdAndUpdate(order.livreurId, {
+                walletBalance: wallet.balance
+            }).session(internalSession);
 
             // Create Ledger Entry
             await WalletTransaction.create([{
@@ -109,16 +113,16 @@ class WalletService {
                 referenceType: 'Order',
                 referenceId: order._id,
                 description: `Payout for order #${order._id.toString().slice(-6)}${!marginTx ? ' (Margin deducted at payout)' : ' (Margin already paid)'}`,
-            }], { session });
+            }], { session: internalSession });
 
-            await session.commitTransaction();
+            if (!session) await (internalSession as mongoose.ClientSession).commitTransaction();
             return { success: true };
         } catch (error: any) {
-            await session.abortTransaction();
+            if (!session) await (internalSession as mongoose.ClientSession).abortTransaction();
             console.error('Wallet Credit Error:', error.message);
             return { success: false, message: error.message };
         } finally {
-            session.endSession();
+            if (!session) internalSession.endSession();
         }
     }
 
@@ -284,7 +288,45 @@ class WalletService {
         }
     }
 
+    /**
+     * Deducts a penalty from the livreur wallet (e.g., for cancellation).
+     */
+    async deductPenaltyForOrder(orderId: string, livreurId: string, penaltyAmountDH: number, session?: mongoose.ClientSession): Promise<{ success: boolean; message?: string }> {
+        const internalSession = session || await mongoose.startSession();
+        if (!session) internalSession.startTransaction();
 
+        try {
+            const wallet = await this.getOrCreateWallet(livreurId, internalSession);
+
+            // Deduct from wallet
+            wallet.balance = parseFloat((wallet.balance - penaltyAmountDH).toFixed(2));
+            await wallet.save({ session: internalSession });
+
+            // Sync with Livreur model
+            await (mongoose.model('Livreur')).findByIdAndUpdate(livreurId, {
+                walletBalance: wallet.balance
+            }).session(internalSession);
+
+            // Create Transaction Record
+            await WalletTransaction.create([{
+                walletId: wallet._id,
+                type: TransactionType.ORDER_REVERSAL, // Or use ADMIN_ADJUSTMENT if PENALTY not in enum
+                amount: -penaltyAmountDH,
+                referenceType: 'Order',
+                referenceId: new mongoose.Types.ObjectId(orderId),
+                description: `Pénalité d'annulation pour commande #${orderId.toString().slice(-6)}`,
+            }], { session: internalSession });
+
+            if (!session) await (internalSession as mongoose.ClientSession).commitTransaction();
+            return { success: true };
+        } catch (error: any) {
+            if (!session) await (internalSession as mongoose.ClientSession).abortTransaction();
+            console.error('Penalty Deduction Error:', error.message);
+            return { success: false, message: error.message };
+        } finally {
+            if (!session) internalSession.endSession();
+        }
+    }
 }
 
 export default new WalletService();
