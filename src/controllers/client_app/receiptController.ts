@@ -53,53 +53,84 @@ export const downloadReceipt = async (req: Request, res: Response) => {
             .fontSize(12)
             .text('Informations Client', 50, 130, { underline: true });
 
+        // --- HELPER FUNCTIONS ---
+        const cleanText = (str: string) => str ? str.replace(/’/g, "'").normalize('NFD').replace(/[\u0300-\u036f]/g, "") : ""; // Remove accents for now to ensure no gibberish if font is issue, OR keep accents if willing to risk. Valid latin1 should be fine.
+        // Actually, let's keep accents but ensure single byte if possible? No, PDFKit handles standard accents.
+        // Let's just truncate and ensuring strings are strings.
+        const safeText = (str: any) => str ? String(str).trim() : 'N/A';
+        const truncate = (str: string, n: number) => (str.length > n ? str.substr(0, n - 1) + '...' : str);
+
+        // --- COLUMNS LAYOUT ---
+        const startY = 150;
+        const colWidth = 220;
+        const leftX = 50;
+        const rightX = 300;
+
+        // Left Column: Client Info
+        doc.fontSize(10);
+        let currentLeftY = startY;
+
         const client: any = order.clientId;
-        doc.fontSize(10)
-            .text(`Nom: ${client?.firstName || ''} ${client?.lastName || 'Client SALA'}`, 50, 150)
-            .text(`Email: ${client?.email || 'N/A'}`, 50, 165)
-            .text(`Tel: ${client?.phoneNumber || 'N/A'}`, 50, 180);
+        doc.text(`Nom: ${safeText(client?.firstName)} ${safeText(client?.lastName)}`, leftX, currentLeftY, { width: colWidth, align: 'left' });
+        currentLeftY = doc.y;
 
-        // --- ORDER DETAILS ---
+        doc.text(`Email: ${safeText(client?.email)}`, leftX, currentLeftY, { width: colWidth, align: 'left' });
+        currentLeftY = doc.y;
+
+        doc.text(`Tel: ${safeText(client?.phoneNumber)}`, leftX, currentLeftY, { width: colWidth, align: 'left' });
+        currentLeftY = doc.y;
+
+        // Right Column: Order Details
         doc.fontSize(12)
-            .text('Détails de la Livraison', 300, 130, { underline: true });
+            .text('Détails de la Livraison', rightX, 130, { underline: true });
+        // Reset to startY for the right column
+        let currentRightY = startY;
 
-        doc.fontSize(10)
-            .text(`Départ: ${order.pickupLocation?.address || 'N/A'}`, 300, 150, { width: 250 })
-            .text(`Arrivée: ${order.dropoffLocation?.address || 'N/A'}`, 300, 165, { width: 250 });
+        const pickupAddr = truncate(safeText(order.pickupLocation?.address), 60);
+        doc.text(`Départ: ${pickupAddr}`, rightX, currentRightY, { width: colWidth, align: 'left' });
+        currentRightY = doc.y + 10; // Add small spacing between addresses
 
-        doc.moveDown();
+        const dropoffAddr = truncate(safeText(order.dropoffLocation?.address), 60);
+        doc.text(`Arrivée: ${dropoffAddr}`, rightX, currentRightY, { width: colWidth, align: 'left' });
+        currentRightY = doc.y;
 
         // --- ITEMS TABLE ---
-        const tableTop = 230;
+        // Start table below the lowest column
+        const tableTop = Math.max(currentLeftY, currentRightY) + 40;
+
         doc.fontSize(10).fillColor('#444444');
         doc.text('Article', 50, tableTop);
         doc.text('Quantité', 280, tableTop, { width: 90, align: 'right' });
-        doc.text('Prix Unitaire', 370, tableTop, { width: 90, align: 'right' });
+        doc.text('Prix Unit.', 370, tableTop, { width: 90, align: 'right' });
         doc.text('Total', 470, tableTop, { width: 90, align: 'right' });
 
         doc.moveTo(50, tableTop + 15).lineTo(560, tableTop + 15).stroke();
 
         let i = 0;
+        doc.fillColor('#000000');
         order.items.forEach((item) => {
-            const y = tableTop + 25 + (i * 25);
-            doc.fillColor('#000000');
-            doc.text(item.name, 50, y);
+            const y = tableTop + 30 + (i * 25);
+
+            // Truncate item name if too long
+            const itemName = truncate(safeText(item.name), 40);
+
+            doc.text(itemName, 50, y);
             doc.text(item.quantity.toString(), 280, y, { width: 90, align: 'right' });
-            doc.text(`${item.price} Dh`, 370, y, { width: 90, align: 'right' });
-            doc.text(`${item.price * item.quantity} Dh`, 470, y, { width: 90, align: 'right' });
+            doc.text(`${item.price.toFixed(2)} Dh`, 370, y, { width: 90, align: 'right' });
+            doc.text(`${(item.price * item.quantity).toFixed(2)} Dh`, 470, y, { width: 90, align: 'right' });
             i++;
         });
 
-        const subtotalY = tableTop + 35 + (i * 25);
+        const subtotalY = tableTop + 40 + (i * 25);
         doc.moveTo(50, subtotalY).lineTo(560, subtotalY).stroke();
 
         // --- TOTALS ---
         doc.fontSize(10)
             .text('Sous-total:', 370, subtotalY + 15, { width: 90, align: 'right' })
-            .text(`${order.pricing.subtotal} Dh`, 470, subtotalY + 15, { width: 90, align: 'right' })
+            .text(`${order.pricing.subtotal.toFixed(2)} Dh`, 470, subtotalY + 15, { width: 90, align: 'right' })
 
-            .text('Frais de livraison:', 370, subtotalY + 30, { width: 90, align: 'right' })
-            .text(`${order.pricing.deliveryFee} Dh`, 470, subtotalY + 30, { width: 90, align: 'right' });
+            .text('Livraison:', 370, subtotalY + 30, { width: 90, align: 'right' })
+            .text(`${order.pricing.deliveryFee.toFixed(2)} Dh`, 470, subtotalY + 30, { width: 90, align: 'right' });
 
         if (order.pricing.tax > 0) {
             doc.text('TVA:', 370, subtotalY + 45, { width: 90, align: 'right' })
