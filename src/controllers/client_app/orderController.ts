@@ -6,26 +6,11 @@ import Product from '../../models/Product';
 import PlatformSettings from '../../models/PlatformSettings';
 import mongoose from 'mongoose';
 import { sendPushNotification } from '../../services/notificationService';
+import { getRoadDistance, getHaversineDistance } from '../../utils/routingUtils';
 
 // Logic moved into calculateOrderPricing with PlatformSettings lookup
 
-/**
- * Helper for distance calculation (Haversine)
- */
-const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
-    return d;
-};
-
-const deg2rad = (deg: number) => deg * (Math.PI / 180);
+// Haversine helper removed from here as it's now in routingUtils.ts.
 
 /**
  * Find the 5 closest online and available livreurs
@@ -47,10 +32,10 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
             'lastLocation.lng': { $exists: true }
         }).select('_id lastLocation name');
 
-        // 3. Calculate distances and sort
+        // 3. Calculate distances and sort (Using Haversine for initial ranking to avoid too many API calls)
         const rankedLivreurs = availableLivreurs
             .map(livreur => {
-                const distance = getDistanceKm(
+                const distance = getHaversineDistance(
                     pickupLocation.lat,
                     pickupLocation.lng,
                     livreur.lastLocation!.lat,
@@ -94,7 +79,13 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
 
     let distance = 0;
     if (pickup && dropoff) {
-        distance = getDistanceKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+        const route = await getRoadDistance(pickup, dropoff);
+        if (route.distance > 0) {
+            distance = route.distance / 1000; // OSRM returns meters, convert to KM
+        } else {
+            // Fallback to Haversine if OSRM fails
+            distance = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+        }
     }
 
     // Delivery Fee calculation

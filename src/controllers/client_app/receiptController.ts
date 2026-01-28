@@ -11,7 +11,7 @@ import fs from 'fs';
 export const downloadReceipt = async (req: Request, res: Response) => {
     try {
         const orderId = req.params.id;
-        const order = await Order.findById(orderId).populate('clientId', 'firstName lastName email phoneNumber');
+        const order = await Order.findById(orderId).populate('clientId', 'name email phoneNumber');
 
         if (!order) {
             return res.status(404).json({ success: false, message: 'Commande non trouvée' });
@@ -29,11 +29,17 @@ export const downloadReceipt = async (req: Request, res: Response) => {
         doc.pipe(res);
 
         // --- HEADER ---
+        // Load custom font for better character support (accents, etc.)
+        const fontPath = path.join(process.cwd(), '..', 'assets', 'fonts', 'NotoSans.ttf');
+        const hasCustomFont = fs.existsSync(fontPath);
+        if (hasCustomFont) {
+            doc.font(fontPath);
+        }
+
         // Add logo if it exists
-        // The project structure: Sala_client_app/Sala_main_server and Sala_client_app/assets
-        const logoPath = path.join(process.cwd(), '..', 'assets', 'home_sala_noBg.png');
+        const logoPath = path.join(process.cwd(), '..', 'assets', 'home_logo_sala.png');
         if (fs.existsSync(logoPath)) {
-            doc.image(logoPath, 50, 45, { width: 60 });
+            doc.image(logoPath, 50, 45, { width: 80 });
         } else {
             // Fallback text logo
             doc.fontSize(25).fillColor('#E91E63').text('SALA', 50, 45);
@@ -54,9 +60,8 @@ export const downloadReceipt = async (req: Request, res: Response) => {
             .text('Informations Client', 50, 130, { underline: true });
 
         // --- HELPER FUNCTIONS ---
-        const cleanText = (str: string) => str ? str.replace(/’/g, "'").normalize('NFD').replace(/[\u0300-\u036f]/g, "") : ""; // Remove accents for now to ensure no gibberish if font is issue, OR keep accents if willing to risk. Valid latin1 should be fine.
-        // Actually, let's keep accents but ensure single byte if possible? No, PDFKit handles standard accents.
-        // Let's just truncate and ensuring strings are strings.
+        // With NotoSans, we can keep accents. 
+        const cleanText = (str: string) => str ? str.replace(/’/g, "'") : "";
         const safeText = (str: any) => str ? String(str).trim() : 'N/A';
         const truncate = (str: string, n: number) => (str.length > n ? str.substr(0, n - 1) + '...' : str);
 
@@ -71,10 +76,7 @@ export const downloadReceipt = async (req: Request, res: Response) => {
         let currentLeftY = startY;
 
         const client: any = order.clientId;
-        doc.text(`Nom: ${safeText(client?.firstName)} ${safeText(client?.lastName)}`, leftX, currentLeftY, { width: colWidth, align: 'left' });
-        currentLeftY = doc.y;
-
-        doc.text(`Email: ${safeText(client?.email)}`, leftX, currentLeftY, { width: colWidth, align: 'left' });
+        doc.text(`Nom: ${safeText(client?.name)}`, leftX, currentLeftY, { width: colWidth, align: 'left' });
         currentLeftY = doc.y;
 
         doc.text(`Tel: ${safeText(client?.phoneNumber)}`, leftX, currentLeftY, { width: colWidth, align: 'left' });
