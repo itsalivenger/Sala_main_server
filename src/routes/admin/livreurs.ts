@@ -4,7 +4,7 @@ import {
     getLivreurProfile,
     updateLivreurKYC,
     adjustLivreurWallet,
-    adjustLivreurWallet,
+
     getLivreurActivity,
     deleteLivreur
 } from '../../controllers/admin/livreursController';

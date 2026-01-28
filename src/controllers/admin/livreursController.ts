@@ -50,39 +50,106 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: 'Livreur non trouvé.' });
         }
 
-        // Fetch Transactions (Ledger)
-        const transactions = await LivreurTransaction.find({ livreurId: id }).sort({ createdAt: -1 }).lean();
+        // Helper for status checks - Extremely robust
+        const normalize = (s: any) => String(s || '').trim().toUpperCase();
+        const isCompleted = (s: string) => ['DELIVERED', 'COMPLETED', 'DELIVERED_CLIENT'].includes(normalize(s));
+        const isCancelled = (s: string) => normalize(s).startsWith('CANCELLED');
 
-        // Fetch Orders for Performance
-        const orders = await Order.find({ livreurId: id }).sort({ createdAt: -1 }).lean();
+        // Fetch Transactions (Ledger) - Use ObjectId for safety
+        const transactions = await LivreurTransaction.find({
+            livreurId: new mongoose.Types.ObjectId(id)
+        }).sort({ createdAt: -1 }).lean();
+
+        // Fetch Orders for Performance - Use ObjectId for safety
+        const orders = await Order.find({
+            livreurId: new mongoose.Types.ObjectId(id)
+        }).sort({ createdAt: -1 }).lean();
 
         // Calculate Performance
-        // Calculate Performance
-        const completedOrders = orders.filter(o => o.status === 'DELIVERED').length;
-        const cancelledOrders = orders.filter(o => ['CANCELLED_CLIENT', 'CANCELLED_ADMIN'].includes(o.status)).length;
+        const completedOrders = orders.filter(o => isCompleted(o.status)).length;
+        const cancelledOrders = orders.filter(o => isCancelled(o.status)).length;
         const totalOrders = orders.length;
         const successRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
         const cancellationRate = totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0;
 
-        // Monthly Earnings (last 30 days)
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const recentCompletedOrders = orders.filter(o =>
-            o.status === 'DELIVERED' &&
+        // Financial & Growth Stats
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+        // Current Month Earnings
+        const currentMonthOrders = orders.filter(o =>
+            isCompleted(o.status) &&
             new Date(o.createdAt) >= thirtyDaysAgo
         );
-        const monthlyEarnings = recentCompletedOrders.reduce((acc, o) => acc + (o.pricing?.livreurNet || 0), 0);
+        const monthlyEarnings = currentMonthOrders.reduce((acc, o) => acc + (Number(o.pricing?.livreurNet) || 0), 0);
+
+        // Previous Month Earnings (for growth calc)
+        const previousMonthOrders = orders.filter(o =>
+            isCompleted(o.status) &&
+            new Date(o.createdAt) >= sixtyDaysAgo &&
+            new Date(o.createdAt) < thirtyDaysAgo
+        );
+        const previousMonthEarnings = previousMonthOrders.reduce((acc, o) => acc + (Number(o.pricing?.livreurNet) || 0), 0);
+
+        let monthlyGrowth = 0;
+        if (previousMonthEarnings > 0) {
+            monthlyGrowth = ((monthlyEarnings - previousMonthEarnings) / previousMonthEarnings) * 100;
+        } else if (monthlyEarnings > 0) {
+            monthlyGrowth = 100;
+        }
+
+        // Total Bonus (Adjustments)
+        const totalBonus = transactions.reduce((acc: number, t: any) => {
+            const cat = normalize(t.category);
+            const type = normalize(t.type);
+            const desc = (t.description || '').toLowerCase();
+
+            const isAdjustment = cat === 'ADJUSTMENT' || cat === 'BONUS' || cat === 'REWARD';
+            const isBonusDesc = desc.includes('bonus') || desc.includes('prime') || desc.includes('gratification');
+
+            if (type === 'CREDIT' && (isAdjustment || isBonusDesc)) {
+                return acc + (Number(t.amount) || 0);
+            }
+            return acc;
+        }, 0);
+
+        // Total Distance & Lifetime Earnings
+        let totalDistance = 0;
+        let lifetimeEarnings = 0;
+
+        orders.forEach(o => {
+            if (isCompleted(o.status)) {
+                if (o.distance) totalDistance += Number(o.distance);
+                if (o.pricing?.livreurNet) lifetimeEarnings += Number(o.pricing.livreurNet);
+            }
+        });
+
+        // Top Zone (Most frequent pickup address)
+        const zoneCounts: Record<string, number> = {};
+        orders.forEach(o => {
+            if (isCompleted(o.status) && o.pickupLocation?.address) {
+                const zone = o.pickupLocation.address;
+                zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
+            }
+        });
+
+        let topZone = "N/A";
+        let maxZoneCount = 0;
+        for (const [zone, count] of Object.entries(zoneCounts)) {
+            if (count > maxZoneCount) {
+                maxZoneCount = count;
+                topZone = zone;
+            }
+        }
+        if (topZone.length > 25) topZone = topZone.substring(0, 25) + '...';
 
         const reviews = livreur.reviews && livreur.reviews.length > 0 ? livreur.reviews : [];
         const averageRating = livreur.averageRating || 0;
 
-        // Rich Stats Calculation
         // Calculate Rating Breakdown dynamically
         const ratingBreakdown: Record<string, number> = {
-            '5': 0,
-            '4': 0,
-            '3': 0,
-            '2': 0,
-            '1': 0
+            '5': 0, '4': 0, '3': 0, '2': 0, '1': 0
         };
 
         if (Array.isArray(reviews)) {
@@ -94,15 +161,41 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
             });
         }
 
+        // Calculate On-Time Rate & Reliability Score
+        let onTimeOrders = 0;
+        let deliveredWithTimeline = 0;
+        let cancelledByLivreur = orders.filter(o => o.status === 'CANCELLED_ADMIN' && o.cancellation?.cancelledBy === 'livreur').length;
+
+        orders.forEach(o => {
+            if (isCompleted(o.status)) {
+                const pickupEvent = o.timeline?.find((t: any) => t.status === 'PICKED_UP');
+                const deliveredEvent = o.timeline?.find((t: any) => t.status === 'DELIVERED' || t.status === 'COMPLETED');
+
+                if (pickupEvent && deliveredEvent) {
+                    deliveredWithTimeline++;
+                    const diffMins = (new Date(deliveredEvent.timestamp).getTime() - new Date(pickupEvent.timestamp).getTime()) / (1000 * 60);
+                    if (diffMins <= 45) { // 45 minutes threshold
+                        onTimeOrders++;
+                    }
+                }
+            }
+        });
+
+        const onTimeRate = deliveredWithTimeline > 0 ? (onTimeOrders / deliveredWithTimeline) * 100 : 100; // Default to 100% if no data
+        const reliabilityScore = (completedOrders + cancelledByLivreur) > 0
+            ? (completedOrders / (completedOrders + cancelledByLivreur)) * 100
+            : 100;
+
         // Rich Stats Calculation
         const richStats = {
-            totalDistance: (livreur as any).totalDistance || 0, // km (stored in model if available)
-            onTimeRate: (livreur as any).onTimeRate || 0, // %
-            reliabilityScore: (livreur as any).reliabilityScore || 0, // %
-            monthlyEarnings: monthlyEarnings, // MAD
-            avgEarningsPerOrder: completedOrders > 0 ? (monthlyEarnings / completedOrders).toFixed(1) : 0,
-            monthlyGrowth: (livreur as any).monthlyGrowth || 0, // % trend
-            topZone: (livreur as any).topZone || "N/A",
+            totalDistance: parseFloat(totalDistance.toFixed(1)),
+            onTimeRate: Math.round(onTimeRate),
+            reliabilityScore: Math.round(reliabilityScore),
+            monthlyEarnings,
+            totalBonus,
+            avgEarningsPerOrder: completedOrders > 0 ? (lifetimeEarnings / completedOrders).toFixed(1) : 0,
+            monthlyGrowth: parseFloat(monthlyGrowth.toFixed(1)),
+            topZone,
             ratingBreakdown
         };
 
@@ -110,9 +203,9 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
         let totalTime = 0;
         let deliveredCount = 0;
         orders.forEach(o => {
-            if (o.status === 'DELIVERED') {
+            if (isCompleted(o.status)) {
                 const pickedUp = o.timeline.find(t => t.status === 'PICKED_UP')?.timestamp;
-                const delivered = o.timeline.find(t => t.status === 'DELIVERED')?.timestamp;
+                const delivered = o.timeline.find(t => t.status === 'DELIVERED' || t.status === 'COMPLETED' || t.status.toUpperCase() === 'DELIVERED_CLIENT')?.timestamp;
                 if (pickedUp && delivered) {
                     totalTime += (new Date(delivered).getTime() - new Date(pickedUp).getTime());
                     deliveredCount++;
