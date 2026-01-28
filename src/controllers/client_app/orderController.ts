@@ -46,7 +46,7 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
             .sort((a, b) => a.distance - b.distance)
             .slice(0, limit);
 
-        console.log(`[OrderController] Found ${rankedLivreurs.length} recommended drivers near pickup.`);
+        // Result logged only in error case or for critical debugging (removed for production feel)
         return rankedLivreurs.map(r => r.id);
     } catch (error) {
         console.error('[OrderController] Error finding closest livreurs:', error);
@@ -99,13 +99,7 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const tax = (subtotal + deliveryFee) * TAX_PERCENT;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
-    console.log('[Pricing] Calculation result (DH):', {
-        subtotal,
-        deliveryFee,
-        platformMargin,
-        tax,
-        total
-    });
+    // Calculation logged only in error case or for critical debugging (removed for production feel)
 
     // Return everything in DH (Floats) as requested
     return {

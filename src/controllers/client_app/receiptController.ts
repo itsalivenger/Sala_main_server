@@ -29,16 +29,16 @@ export const downloadReceipt = async (req: Request, res: Response) => {
         doc.pipe(res);
 
         // --- HEADER ---
-        // Load custom font for better character support (accents, etc.)
-        const fontPath = path.join(process.cwd(), '..', 'assets', 'fonts', 'NotoSans.ttf');
-        const hasCustomFont = fs.existsSync(fontPath);
-        if (hasCustomFont) {
-            doc.font(fontPath);
-        }
+        const assetsBase = path.join(__dirname, '..', '..', '..', '..', 'assets');
+
+        // Reverting to standard font for now as the custom NotoSans subset is causing 'squares'
+        // Standard fonts (Helvetica) are bulletproof for basic Latin text.
+        doc.font('Helvetica');
 
         // Add logo if it exists
-        const logoPath = path.join(process.cwd(), '..', 'assets', 'home_logo_sala.png');
+        const logoPath = path.join(assetsBase, 'home_logo_sala.png');
         if (fs.existsSync(logoPath)) {
+            // Logo is at 50, 45 with width 80. It should end around Y=125
             doc.image(logoPath, 50, 45, { width: 80 });
         } else {
             // Fallback text logo
@@ -47,7 +47,7 @@ export const downloadReceipt = async (req: Request, res: Response) => {
 
         doc.fillColor('#444444')
             .fontSize(20)
-            .text('REÇU DE COMMANDE', 200, 50, { align: 'right' });
+            .text('RECU DE COMMANDE', 200, 50, { align: 'right' });
 
         doc.fontSize(10)
             .text(`Date: ${new Date(order.createdAt).toLocaleDateString('fr-FR')}`, 200, 75, { align: 'right' })
@@ -55,18 +55,29 @@ export const downloadReceipt = async (req: Request, res: Response) => {
             .moveDown();
 
         // --- CLIENT INFO ---
+        // Further increased spacing from logo for a much roomier look
+        // Logo ends around 125. Starting at 240 gives a clear separation.
         doc.fillColor('#000000')
             .fontSize(12)
-            .text('Informations Client', 50, 130, { underline: true });
+            .text('Informations Client', 50, 240, { underline: true });
 
         // --- HELPER FUNCTIONS ---
-        // With NotoSans, we can keep accents. 
-        const cleanText = (str: string) => str ? str.replace(/’/g, "'") : "";
-        const safeText = (str: any) => str ? String(str).trim() : 'N/A';
+        // Robust cleaning: remove accents and non-standard characters to avoid squares/gibberish in PDF
+        const cleanText = (str: string) => {
+            if (!str) return "";
+            return str
+                .replace(/’/g, "'")
+                .replace(/[^\x00-\x7F]/g, (char) => {
+                    // Normalize and strip accents for characters that have them
+                    return char.normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+                })
+                .replace(/[^\x20-\x7E]/g, ""); // Final pass: remove any remaining non-printable ASCII
+        };
+        const safeText = (str: any) => str ? cleanText(String(str).trim()) : 'N/A';
         const truncate = (str: string, n: number) => (str.length > n ? str.substr(0, n - 1) + '...' : str);
 
         // --- COLUMNS LAYOUT ---
-        const startY = 150;
+        const startY = 270;
         const colWidth = 220;
         const leftX = 50;
         const rightX = 300;
@@ -84,16 +95,16 @@ export const downloadReceipt = async (req: Request, res: Response) => {
 
         // Right Column: Order Details
         doc.fontSize(12)
-            .text('Détails de la Livraison', rightX, 130, { underline: true });
+            .text('Details de la Livraison', rightX, 240, { underline: true });
         // Reset to startY for the right column
         let currentRightY = startY;
 
         const pickupAddr = truncate(safeText(order.pickupLocation?.address), 60);
-        doc.text(`Départ: ${pickupAddr}`, rightX, currentRightY, { width: colWidth, align: 'left' });
+        doc.text(`Depart: ${pickupAddr}`, rightX, currentRightY, { width: colWidth, align: 'left' });
         currentRightY = doc.y + 10; // Add small spacing between addresses
 
         const dropoffAddr = truncate(safeText(order.dropoffLocation?.address), 60);
-        doc.text(`Arrivée: ${dropoffAddr}`, rightX, currentRightY, { width: colWidth, align: 'left' });
+        doc.text(`Arrivee: ${dropoffAddr}`, rightX, currentRightY, { width: colWidth, align: 'left' });
         currentRightY = doc.y;
 
         // --- ITEMS TABLE ---
@@ -102,7 +113,7 @@ export const downloadReceipt = async (req: Request, res: Response) => {
 
         doc.fontSize(10).fillColor('#444444');
         doc.text('Article', 50, tableTop);
-        doc.text('Quantité', 280, tableTop, { width: 90, align: 'right' });
+        doc.text('Quantite', 280, tableTop, { width: 90, align: 'right' });
         doc.text('Prix Unit.', 370, tableTop, { width: 90, align: 'right' });
         doc.text('Total', 470, tableTop, { width: 90, align: 'right' });
 
