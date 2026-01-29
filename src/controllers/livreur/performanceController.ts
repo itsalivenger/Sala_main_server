@@ -69,3 +69,34 @@ export const getPerformanceStats = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Erreur lors de la récupération des statistiques.' });
     }
 };
+
+/**
+ * @desc    Get all reviews for the authenticated livreur
+ * @route   GET /api/livreur/performance/reviews
+ * @access  Private/Livreur
+ */
+export const getPerformanceReviews = async (req: Request, res: Response) => {
+    try {
+        const livreurId = (req as any).user?.id;
+        if (!livreurId) {
+            return res.status(401).json({ success: false, message: 'Non autorisé.' });
+        }
+
+        const livreur = await Livreur.findById(livreurId).select('reviews');
+        if (!livreur) {
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé.' });
+        }
+
+        // Return all reviews sorted by date desc
+        const reviews = (livreur.reviews || [])
+            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        res.status(200).json({
+            success: true,
+            data: reviews
+        });
+    } catch (error: any) {
+        console.error('[LIVREUR_REVIEWS] Error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de la récupération des avis.' });
+    }
+};
