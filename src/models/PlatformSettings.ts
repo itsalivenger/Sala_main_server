@@ -68,20 +68,19 @@ const PlatformSettingsSchema: Schema = new Schema(
             car_volume_threshold: { type: Number, default: 1 },
             max_active_orders: { type: Number, default: 3 }
         },
+        client: {
+            min_order_value: { type: Number, default: 50 },
+            first_order_discount: { type: Number, default: 10 },
+            referral_bonus_amount: { type: Number, default: 5 },
+            support_target_minutes: { type: Number, default: 15 },
+            free_delivery_threshold: { type: Number, default: 200 },
+            max_order_volume: { type: Number, default: 0.3 }
+        },
+        max_categories: { type: Number, default: 20 }
     },
-    client: {
-    min_order_value: { type: Number, default: 50 },
-    first_order_discount: { type: Number, default: 10 },
-    referral_bonus_amount: { type: Number, default: 5 },
-    support_target_minutes: { type: Number, default: 15 },
-    free_delivery_threshold: { type: Number, default: 200 },
-    max_order_volume: { type: Number, default: 0.3 }
-},
-    max_categories: { type: Number, default: 20 }
-    },
-{
-    timestamps: { createdAt: false, updatedAt: true },
-    collection: 'PlatformSettings',
+    {
+        timestamps: { createdAt: false, updatedAt: true },
+        collection: 'PlatformSettings',
     }
 );
 
