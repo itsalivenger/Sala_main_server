@@ -4,6 +4,8 @@ import mongoose from 'mongoose';
 import walletService from '../../services/walletService';
 import Client from '../../models/Client';
 import { sendPushNotification } from '../../services/notificationService';
+import PlatformSettings from '../../models/PlatformSettings';
+import Livreur from '../../models/Livreur';
 
 /**
  * @desc    Get available orders for livreurs (PAID status, not yet assigned)
@@ -23,7 +25,6 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
         const skip = (page - 1) * limit;
 
         // Build query for available orders
-        // Match if livreur is in eligible list OR if list is empty (public/expanded)
         const query = {
             status: 'SEARCHING_FOR_LIVREUR',
             $or: [
@@ -44,21 +45,13 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
             .limit(limit)
             .lean();
 
-        // If no real orders found, return empty array
+        // If no orders found
         if (orders.length === 0 && page === 1) {
-            console.log('[LIVREUR_ORDERS] No real orders found in database');
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 orders: [],
-                pagination: {
-                    page,
-                    limit,
-                    total: 0,
-                    totalPages: 0,
-                    hasMore: false
-                }
+                pagination: { page, limit, total: 0, totalPages: 0, hasMore: false }
             });
-            return;
         }
 
         // Calculate pagination metadata
@@ -68,13 +61,7 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
         res.status(200).json({
             success: true,
             orders,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages,
-                hasMore
-            }
+            pagination: { page, limit, total, totalPages, hasMore }
         });
     } catch (error: any) {
         console.error('[LIVREUR_ORDERS] Get Available Error:', error);
@@ -137,6 +124,43 @@ export const acceptOrder = async (req: Request, res: Response) => {
             session.endSession();
             return res.status(400).json({ success: false, message: 'ID de commande invalide.' });
         }
+
+        // --- ENFORCE MAX ACTIVE ORDERS LIMIT ---
+        const settings = await PlatformSettings.findOne().session(session);
+        const maxActiveOrders = settings?.livreur?.max_active_orders || 3;
+        const minRating = settings?.livreur?.min_rating_to_work || 4;
+
+        const activeOrdersCount = await Order.countDocuments({
+            livreurId: new mongoose.Types.ObjectId(livreurId),
+            status: { $in: ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'] }
+        }).session(session);
+
+        if (activeOrdersCount >= maxActiveOrders) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(403).json({
+                success: false,
+                message: `Vous avez atteint la limite maximale de commandes actives (${maxActiveOrders}). Veuillez en livrer une avant d'en accepter une autre.`
+            });
+        }
+
+        // --- ENFORCE MIN RATING LIMIT ---
+        const livreur = await Livreur.findById(livreurId).session(session);
+        if (!livreur) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé.' });
+        }
+
+        if (livreur.averageRating > 0 && livreur.averageRating < minRating) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(403).json({
+                success: false,
+                message: `Votre note moyenne (${livreur.averageRating.toFixed(1)}) est insuffisante pour accepter de nouvelles commandes (Minimum: ${minRating}).`
+            });
+        }
+        // --------------------------------------
 
         console.log(`[ACCEPT_ORDER] Attempting to accept order ID: ${id} by livreur: ${livreurId}`);
         const order = await Order.findById(id).session(session);
