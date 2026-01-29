@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import Livreur from '../../models/Livreur';
 import Order from '../../models/Order';
-import LivreurTransaction from '../../models/LivreurTransaction';
 import mongoose from 'mongoose';
+import walletService from '../../services/walletService';
+import Wallet from '../../models/Wallet';
+import WalletTransaction from '../../models/WalletTransaction';
 
 /**
  * @desc    Get all livreurs with stats
@@ -13,6 +15,19 @@ export const getAllLivreurs = async (req: Request, res: Response) => {
     try {
         const livreurs = await Livreur.find({}).sort({ createdAt: -1 }).lean();
 
+        // Fetch active orders to count per livreur
+        const activeOrders = await Order.find({
+            status: { $in: ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'] }
+        }).select('livreurId').lean();
+
+        const activeCounts: Record<string, number> = {};
+        activeOrders.forEach(o => {
+            if (o.livreurId) {
+                const id = o.livreurId.toString();
+                activeCounts[id] = (activeCounts[id] || 0) + 1;
+            }
+        });
+
         const livreursWithStats = livreurs.map((l: any) => ({
             id: l._id,
             name: l.name || 'Inconnu',
@@ -22,11 +37,13 @@ export const getAllLivreurs = async (req: Request, res: Response) => {
             city: l.city,
             walletBalance: l.walletBalance || 0,
             isOnline: l.isOnline || false,
+            activeOrdersCount: activeCounts[l._id.toString()] || 0, // Added count
             createdAt: l.createdAt
         }));
 
         res.status(200).json({
             success: true,
+            totalActiveOrders: activeOrders.length, // Total active in the platform
             count: livreursWithStats.length,
             livreurs: livreursWithStats
         });
@@ -55,15 +72,25 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
         const isCompleted = (s: string) => ['DELIVERED', 'COMPLETED', 'DELIVERED_CLIENT'].includes(normalize(s));
         const isCancelled = (s: string) => normalize(s).startsWith('CANCELLED');
 
-        // Fetch Transactions (Ledger) - Use ObjectId for safety
-        const transactions = await LivreurTransaction.find({
-            livreurId: new mongoose.Types.ObjectId(id)
-        }).sort({ createdAt: -1 }).lean();
+        // Fetch Wallet & Transactions (Source of truth)
+        const wallet = await Wallet.findOne({ livreurId: id }).lean();
+        let transactions: any[] = [];
+        if (wallet) {
+            transactions = await WalletTransaction.find({
+                walletId: wallet._id
+            }).sort({ createdAt: -1 }).limit(50).lean();
+        }
 
-        // Fetch Orders for Performance - Use ObjectId for safety
+        // Fetch Orders for Performance - Robust query
         const orders = await Order.find({
-            livreurId: new mongoose.Types.ObjectId(id)
-        }).sort({ createdAt: -1 }).lean();
+            $or: [
+                { livreurId: id },
+                { livreurId: new mongoose.Types.ObjectId(id) }
+            ]
+        })
+            .populate('clientId', 'name')
+            .sort({ createdAt: -1 })
+            .lean();
 
         // Calculate Performance
         const completedOrders = orders.filter(o => isCompleted(o.status)).length;
@@ -214,15 +241,37 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
         });
         const avgDeliveryTime = deliveredCount > 0 ? (totalTime / deliveredCount / 60000) : 0; // in minutes
 
+        // Active Orders
+        const activeOrders = orders.filter(o =>
+            ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'].includes(normalize(o.status))
+        ).map(o => ({
+            id: o._id,
+            orderId: o.orderId,
+            status: o.status,
+            customerName: (o.clientId as any)?.name || 'Client',
+            pickup: o.pickupLocation?.address,
+            dropoff: o.dropoffLocation?.address,
+            amount: o.pricing?.total,
+            createdAt: o.createdAt
+        }));
+
         res.status(200).json({
             success: true,
             livreur: {
                 ...livreur,
                 id: livreur._id
             },
+            activeOrders,
             wallet: {
-                balance: livreur.walletBalance || 0,
-                transactions
+                balance: wallet?.balance || livreur.walletBalance || 0,
+                transactions: transactions.map(t => ({
+                    id: t._id,
+                    amount: t.amount,
+                    type: t.type === 'TOP_UP' || t.type === 'ORDER_PAYOUT' || (t.amount > 0) ? 'Credit' : 'Debit',
+                    category: t.type,
+                    description: t.description,
+                    createdAt: t.createdAt
+                }))
             },
             performance: {
                 completedOrders,
@@ -305,20 +354,25 @@ export const adjustLivreurWallet = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: 'Livreur non trouvé.' });
         }
 
+        const wallet = await walletService.getOrCreateWallet(id, session);
+
         // Calculate new balance
         const adjustment = type === 'Credit' ? Number(amount) : -Number(amount);
-        livreur.walletBalance = (livreur.walletBalance || 0) + adjustment;
+        wallet.balance = parseFloat((wallet.balance + adjustment).toFixed(2));
+        await wallet.save({ session });
+
+        // Sync with Livreur model
+        livreur.walletBalance = wallet.balance;
         await livreur.save({ session });
 
         // Create transaction record
-        await LivreurTransaction.create([{
-            livreurId: id,
-            amount: Number(amount),
-            type,
-            category,
-            description,
-            adminId,
-            status: 'Completed'
+        await WalletTransaction.create([{
+            walletId: wallet._id,
+            amount: adjustment,
+            type: type === 'Credit' ? 'TOP_UP' : 'WITHDRAWAL', // Using enums from TransactionType
+            referenceType: 'Admin',
+            referenceId: new mongoose.Types.ObjectId(adminId),
+            description: `[ADMIN] ${category}: ${description}`,
         }], { session });
 
         await session.commitTransaction();
@@ -327,7 +381,7 @@ export const adjustLivreurWallet = async (req: Request, res: Response) => {
         res.status(200).json({
             success: true,
             message: 'Portefeuille ajusté avec succès.',
-            newBalance: livreur.walletBalance
+            newBalance: wallet.balance
         });
     } catch (error: any) {
         await session.abortTransaction();
