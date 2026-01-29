@@ -7,6 +7,7 @@ export interface IPlatformSettings extends Document {
     weight_unit_kg: number;                 // e.g., 1 KG
     platform_margin_percentage: number;     // e.g., 15%
     minimum_payout_amount: number;          // e.g., 50.00 DH
+    tax_percentage: number;                 // e.g., 20%
     livreur: {
         min_funds_withdrawal: number;       // e.g., 50.00 DH
         radius_max_km: number;
@@ -41,6 +42,7 @@ const PlatformSettingsSchema: Schema = new Schema(
         weight_unit_kg: { type: Number, required: true, default: 1 },
         platform_margin_percentage: { type: Number, required: true, default: 15 },
         minimum_payout_amount: { type: Number, required: true, default: 50 },
+        tax_percentage: { type: Number, required: true, default: 20 },
         livreur: {
             min_funds_withdrawal: { type: Number, default: 50 },
             radius_max_km: { type: Number, default: 10 },

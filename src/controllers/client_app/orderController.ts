@@ -60,14 +60,14 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
 const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
     const settings = await PlatformSettings.findOne();
     if (!settings) {
-        console.warn('[Pricing] No PlatformSettings found in DB, using hardcoded fallbacks.');
+        throw new Error('Platform configuration missing. Please setup PlatformSettings in the database.');
     }
 
-    const baseFee = settings?.delivery_base_price || 15; // Now in DH
-    const pricePerKm = settings?.delivery_price_per_km || 5;
-    const feePerKg = settings?.delivery_price_per_weight_unit || 5;
-    const marginPercent = (settings?.platform_margin_percentage || 15) / 100;
-    const TAX_PERCENT = 0.2; // 20%
+    const baseFee = settings.delivery_base_price;
+    const pricePerKm = settings.delivery_price_per_km;
+    const feePerKg = settings.delivery_price_per_weight_unit;
+    const marginPercent = settings.platform_margin_percentage / 100;
+    const TAX_PERCENT = settings.tax_percentage / 100;
 
     let subtotal = 0;
     let totalWeight = 0;
@@ -88,9 +88,8 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         }
     }
 
-    // Delivery Fee calculation
     const distanceFee = distance * pricePerKm;
-    const weightFee = Math.max(0, (totalWeight - 1) * feePerKg);
+    const weightFee = totalWeight * feePerKg;
     const deliveryFee = baseFee + distanceFee + weightFee;
 
     const platformMargin = subtotal * marginPercent;
@@ -112,8 +111,10 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         tax: parseFloat(tax.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         discount: 0,
-        minOrderValue: settings?.client?.min_order_value || 50,
-        freeDeliveryThreshold: settings?.client?.free_delivery_threshold || 200
+        minOrderValue: settings.client.min_order_value,
+        freeDeliveryThreshold: settings.client.free_delivery_threshold,
+        dbTaxRate: settings.tax_percentage,
+        dbMarginRate: settings.platform_margin_percentage
     };
 };
 
