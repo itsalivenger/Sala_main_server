@@ -30,6 +30,7 @@ export interface IPlatformSettings extends Document {
         free_delivery_threshold: number;    // e.g., 200.00 DH
     };
     max_categories: number;
+    tax_percentage: number;
     updatedAt: Date;
 }
 
@@ -72,7 +73,8 @@ const PlatformSettingsSchema: Schema = new Schema(
             support_target_minutes: { type: Number, default: 15 },
             free_delivery_threshold: { type: Number, default: 200 }
         },
-        max_categories: { type: Number, default: 20 }
+        max_categories: { type: Number, default: 20 },
+        tax_percentage: { type: Number, default: 20 }
     },
     {
         timestamps: { createdAt: false, updatedAt: true },

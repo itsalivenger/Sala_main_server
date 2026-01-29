@@ -67,7 +67,7 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const pricePerKm = settings?.delivery_price_per_km || 5;
     const feePerKg = settings?.delivery_price_per_weight_unit || 5;
     const marginPercent = (settings?.platform_margin_percentage || 15) / 100;
-    const TAX_PERCENT = 0.2; // 20%
+    const taxRate = (settings?.tax_percentage ?? 20) / 100;
 
     let subtotal = 0;
     let totalWeight = 0;
@@ -95,8 +95,8 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
 
     const platformMargin = subtotal * marginPercent;
 
-    // Tax is 20% of (Subtotal + DeliveryFee)
-    const tax = (subtotal + deliveryFee) * TAX_PERCENT;
+    // Tax is dynamically calculated from settings (e.g., 20% of Subtotal + DeliveryFee)
+    const tax = (subtotal + deliveryFee) * taxRate;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
     console.log('[Pricing] Calculation result (DH):', {
