@@ -16,6 +16,7 @@ class WalletService {
                 weight_unit_kg: 1,
                 platform_margin_percentage: 15,
                 minimum_payout_amount: 50,
+                tax_percentage: 20,
                 livreur: {
                     min_funds_withdrawal: 50,
                     radius_max_km: 10,

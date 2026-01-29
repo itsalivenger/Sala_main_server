@@ -46,7 +46,7 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
             .sort((a, b) => a.distance - b.distance)
             .slice(0, limit);
 
-        console.log(`[OrderController] Found ${rankedLivreurs.length} recommended drivers near pickup.`);
+        // Result logged only in error case or for critical debugging (removed for production feel)
         return rankedLivreurs.map(r => r.id);
     } catch (error) {
         console.error('[OrderController] Error finding closest livreurs:', error);
@@ -60,7 +60,7 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
 const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
     const settings = await PlatformSettings.findOne();
     if (!settings) {
-        console.warn('[Pricing] No PlatformSettings found in DB, using hardcoded fallbacks.');
+        throw new Error('Platform configuration missing. Please setup PlatformSettings in the database.');
     }
 
     const baseFee = settings?.delivery_base_price || 15; // Now in DH
@@ -88,9 +88,8 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         }
     }
 
-    // Delivery Fee calculation
     const distanceFee = distance * pricePerKm;
-    const weightFee = Math.max(0, (totalWeight - 1) * feePerKg);
+    const weightFee = totalWeight * feePerKg;
     const deliveryFee = baseFee + distanceFee + weightFee;
 
     const platformMargin = subtotal * marginPercent;
@@ -99,13 +98,7 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const tax = (subtotal + deliveryFee) * taxRate;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
-    console.log('[Pricing] Calculation result (DH):', {
-        subtotal,
-        deliveryFee,
-        platformMargin,
-        tax,
-        total
-    });
+    // Calculation logged only in error case or for critical debugging (removed for production feel)
 
     // Return everything in DH (Floats) as requested
     return {
@@ -118,8 +111,10 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         tax: parseFloat(tax.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         discount: 0,
-        minOrderValue: settings?.client?.min_order_value || 50,
-        freeDeliveryThreshold: settings?.client?.free_delivery_threshold || 200
+        minOrderValue: settings.client.min_order_value,
+        freeDeliveryThreshold: settings.client.free_delivery_threshold,
+        dbTaxRate: settings.tax_percentage,
+        dbMarginRate: settings.platform_margin_percentage
     };
 };
 
