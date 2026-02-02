@@ -42,28 +42,66 @@ Configuration opérationnelle et limites pour la flotte de livreurs.
 | `max_active_orders` | Nombre maximal de commandes simultanées pour un livreur. | Entier |
 
 ### ⚖️ Seuils de Matching (Logique de Sélection de Véhicule)
-Détermine quel type de véhicule peut voir quelle commande en fonction de la charge.
+Ces seuils déterminent quand le système doit proposer un véhicule de catégorie supérieure, même si le poids/volume n'atteint pas encore la limite physique stricte. Cela permet d'assurer une marge de sécurité et d'optimiser le confort du livreur.
 
 | Paramètre | Description | Unité |
 |-----------|-------------|-------|
-| `bike_weight_threshold` | Si poids > seuil, la commande passe en catégorie supérieure (Voiture). | Kg |
-| `bike_volume_threshold` | Si volume > seuil, la commande passe en catégorie supérieure (Voiture). | m³ |
-| `car_weight_threshold` | Si poids > seuil, la commande passe en catégorie supérieure (Camion). | Kg |
-| `car_volume_threshold` | Si volume > seuil, la commande passe en catégorie supérieure (Camion). | m³ |
+| `bike_weight_threshold` | Si poids > seuil, la commande est orientée vers une Voiture. | Kg |
+| `bike_volume_threshold` | Si volume > seuil, la commande est orientée vers une Voiture. | m³ |
+| `car_weight_threshold` | Si poids > seuil, la commande est orientée vers un Camion. | Kg |
+| `car_volume_threshold` | Si volume > seuil, la commande est orientée vers un Camion. | m³ |
 
-### 📦 Limites Physiques (Vehicle Limits)
-Capacités maximales strictes par type de véhicule.
-- **Moto (Bike)**: `max_weight` (Kg), `max_volume` (m³)
-- **Voiture (Car)**: `max_weight` (Kg), `max_volume` (m³)
-- **Camionnette (Truck)**: `max_weight` (Kg), `max_volume` (m³)
+### 📦 Limites Physiques Strictes (Vehicle Limits)
+Capacités maximales réelles au-delà desquelles le véhicule ne peut plus prendre la commande. Ces valeurs sont utilisées pour le filtrage dur dans les algorithmes de matching.
+
+- **Moto (Bike)**: 
+  - `max_weight`: Poids total maximal des articles (Kg). 
+  - `max_volume`: Volume total maximal (m³). Idéal pour petits colis/sacs.
+- **Voiture (Car)**: 
+  - `max_weight`: Poids total maximal (Kg). 
+  - `max_volume`: Volume total maximal (m³). Convient pour les courses moyennes ou fragiles.
+- **Camionnette (Truck)**: 
+  - `max_weight`: Poids total maximal (Kg). 
+  - `max_volume`: Volume total maximal (m³). Pour les articles encombrants ou lourds.
 
 ---
 
-## ⚙️ Limites de la Plateforme
-| Paramètre | Description | Unité |
-|-----------|-------------|-------|
-| `max_categories` | Nombre maximal de catégories de produits actives autorisées. | Entier |
+## 🔗 Intégration & Récupération (Fetching)
+
+Pour utiliser ces valeurs dans d'autres applications ou services de l'écosystème SALA :
+
+### 📡 API Endpoints
+- **Admin App**: Les paramètres sont récupérés via `GET /api/admin/wallet/settings`.
+- **Livreur App**: Les limites sont envoyées lors de la connexion ou via les détails de la commande si nécessaire.
+
+### 💻 Code Backend (Node.js/Mongoose)
+Pour récupérer les paramètres directement depuis le serveur principal :
+```typescript
+import PlatformSettings from './models/PlatformSettings';
+
+const settings = await PlatformSettings.findOne();
+const bikeLimit = settings.livreur.vehicle_limits.bike.max_weight;
+```
+
+### 🛠️ Structure de Données (JSON)
+Le document `PlatformSettings` suit cette arborescence pour les limites de véhicule :
+```json
+{
+  "livreur": {
+    "vehicle_limits": {
+      "bike": { "max_weight": 10, "max_volume": 0.1 },
+      "car": { "max_weight": 100, "max_volume": 1 },
+      "truck": { "max_weight": 1000, "max_volume": 10 }
+    },
+    "bike_weight_threshold": 10,
+    "bike_volume_threshold": 0.1,
+    "car_weight_threshold": 100,
+    "car_volume_threshold": 1
+  }
+}
+```
 
 ---
 
-*Dernière mise à jour : 22 Janvier 2026*
+*Dernière mise à jour : 02 Février 2026*
+
