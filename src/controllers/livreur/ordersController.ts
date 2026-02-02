@@ -162,15 +162,30 @@ export const acceptOrder = async (req: Request, res: Response) => {
         }
         // --------------------------------------
 
-        console.log(`[ACCEPT_ORDER] Attempting to accept order ID: ${id} by livreur: ${livreurId}`);
         const order = await Order.findById(id).session(session);
-        console.log(`[ACCEPT_ORDER] Database search result: ${order ? 'Found' : 'Not Found'}`);
-
         if (!order) {
             await session.abortTransaction();
             session.endSession();
             return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
         }
+
+        // --- ENFORCE VEHICLE COMPATIBILITY ---
+        const vehicleRank = { 'moto': 1, 'small_car': 2, 'large_car': 3 };
+        const livreurRank = vehicleRank[livreur.vehicle?.type || 'moto'] || 1;
+        const requiredRank = vehicleRank[order.requiredVehicle || 'moto'] || 1;
+
+        if (livreurRank < requiredRank) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(403).json({
+                success: false,
+                message: `Votre véhicule (${livreur.vehicle?.type || 'moto'}) n'est pas compatible avec cette commande. (Requis: ${order.vehicleTypeLabel || 'Format Léger'})`
+            });
+        }
+        // --------------------------------------
+
+        console.log(`[ACCEPT_ORDER] Attempting to accept order ID: ${id} by livreur: ${livreurId}`);
+        console.log(`[ACCEPT_ORDER] Database search result: ${order ? 'Found' : 'Not Found'}`);
 
         // Verify order is available
         if (order.status !== 'SEARCHING_FOR_LIVREUR') {
