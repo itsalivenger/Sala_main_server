@@ -57,7 +57,7 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
 /**
  * Helper to calculate order pricing
  */
-const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
+export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
     const settings = await PlatformSettings.findOne();
     if (!settings) {
         throw new Error('Platform configuration missing. Please setup PlatformSettings in the database.');
@@ -72,9 +72,19 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     let subtotal = 0;
     let totalWeight = 0;
 
+    let totalVolume = 0;
+    const productIds = items.map(i => i._id);
+    const products = await Product.find({ _id: { $in: productIds } });
+
     items.forEach(item => {
         subtotal += item.price * item.quantity;
         totalWeight += (item.unitWeight || 0) * item.quantity;
+
+        const product = products.find(p => p._id.toString() === (item._id || '').toString());
+        if (product && product.dimensions) {
+            const vol = (product.dimensions.length || 0) * (product.dimensions.width || 0) * (product.dimensions.height || 0);
+            totalVolume += (vol / 1000000) * item.quantity; // cm3 to m3
+        }
     });
 
     let distance = 0;
@@ -98,12 +108,33 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const tax = (subtotal + deliveryFee) * taxRate;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
-    // Calculation logged only in error case or for critical debugging (removed for production feel)
+    // Determine Required Vehicle
+    let requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto';
+    let vehicleTypeLabel = 'Format Léger';
+    let vehicleIcon = 'bicycle-outline';
+
+    const { bike_weight_threshold, bike_volume_threshold, car_weight_threshold, car_volume_threshold } = settings.livreur;
+
+    if (totalWeight > bike_weight_threshold || totalVolume > bike_volume_threshold) {
+        if (totalWeight <= car_weight_threshold && totalVolume <= car_volume_threshold) {
+            requiredVehicle = 'small_car';
+            vehicleTypeLabel = 'Format Moyen';
+            vehicleIcon = 'car-outline';
+        } else {
+            requiredVehicle = 'large_car';
+            vehicleTypeLabel = 'Grand Format';
+            vehicleIcon = 'truck-outline';
+        }
+    }
 
     // Return everything in DH (Floats) as requested
     return {
         subtotal: parseFloat(subtotal.toFixed(2)),
         totalWeight: parseFloat(totalWeight.toFixed(2)),
+        totalVolume: parseFloat(totalVolume.toFixed(2)),
+        requiredVehicle,
+        vehicleTypeLabel,
+        vehicleIcon,
         distance: parseFloat(distance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         platformMargin: parseFloat(platformMargin.toFixed(2)),
@@ -176,6 +207,10 @@ export const createOrder = async (req: Request, res: Response) => {
             clientId,
             items: enrichedItems,
             totalWeight: pricing.totalWeight,
+            totalVolume: pricing.totalVolume,
+            requiredVehicle: pricing.requiredVehicle,
+            vehicleTypeLabel: pricing.vehicleTypeLabel,
+            vehicleIcon: pricing.vehicleIcon,
             distance: pricing.distance,
             pickupLocation,
             dropoffLocation,
