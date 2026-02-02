@@ -57,12 +57,15 @@ Capacités maximales réelles au-delà desquelles le véhicule ne peut plus pren
 - **Moto (Bike)**: 
   - `max_weight`: Poids total maximal des articles (Kg). 
   - `max_volume`: Volume total maximal (m³). Idéal pour petits colis/sacs.
+  - `base_price`: Frais de base spécifiques pour la moto (MAD).
 - **Voiture (Car)**: 
   - `max_weight`: Poids total maximal (Kg). 
   - `max_volume`: Volume total maximal (m³). Convient pour les courses moyennes ou fragiles.
+  - `base_price`: Frais de base spécifiques pour la voiture (MAD).
 - **Camionnette (Truck)**: 
   - `max_weight`: Poids total maximal (Kg). 
   - `max_volume`: Volume total maximal (m³). Pour les articles encombrants ou lourds.
+  - `base_price`: Frais de base spécifiques pour le camion (MAD).
 
 ---
 
@@ -72,7 +75,7 @@ Pour utiliser ces valeurs dans d'autres applications ou services de l'écosystè
 
 ### 📡 API Endpoints
 - **Admin App**: Les paramètres sont récupérés via `GET /api/admin/wallet/settings`.
-- **Livreur App**: Les limites sont envoyées lors de la connexion ou via les détails de la commande si nécessaire.
+- **Livreur App**: Les limites et tarifs de base sont envoyés lors de la connexion ou via les détails de la commande si nécessaire.
 
 ### 💻 Code Backend (Node.js/Mongoose)
 Pour récupérer les paramètres directement depuis le serveur principal :
@@ -81,17 +84,18 @@ import PlatformSettings from './models/PlatformSettings';
 
 const settings = await PlatformSettings.findOne();
 const bikeLimit = settings.livreur.vehicle_limits.bike.max_weight;
+const bikeBasePrice = settings.livreur.vehicle_limits.bike.base_price;
 ```
 
 ### 🛠️ Structure de Données (JSON)
-Le document `PlatformSettings` suit cette arborescence pour les limites de véhicule :
+Le document `PlatformSettings` suit cette arborescence pour les limites et tarifs par véhicule :
 ```json
 {
   "livreur": {
     "vehicle_limits": {
-      "bike": { "max_weight": 10, "max_volume": 0.1 },
-      "car": { "max_weight": 100, "max_volume": 1 },
-      "truck": { "max_weight": 1000, "max_volume": 10 }
+      "bike": { "max_weight": 10, "max_volume": 0.1, "base_price": 15 },
+      "car": { "max_weight": 100, "max_volume": 1, "base_price": 30 },
+      "truck": { "max_weight": 1000, "max_volume": 10, "base_price": 100 }
     },
     "bike_weight_threshold": 10,
     "bike_volume_threshold": 0.1,

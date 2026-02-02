@@ -13,9 +13,9 @@ export interface IPlatformSettings extends Document {
         radius_max_km: number;
         min_rating_to_work: number;
         vehicle_limits: {
-            bike: { max_weight: number; max_volume: number };
-            car: { max_weight: number; max_volume: number };
-            truck: { max_weight: number; max_volume: number };
+            bike: { max_weight: number; max_volume: number; base_price: number };
+            car: { max_weight: number; max_volume: number; base_price: number };
+            truck: { max_weight: number; max_volume: number; base_price: number };
         };
         bike_weight_threshold: number;
         bike_volume_threshold: number;
@@ -51,15 +51,18 @@ const PlatformSettingsSchema: Schema = new Schema(
             vehicle_limits: {
                 bike: {
                     max_weight: { type: Number, default: 10 },
-                    max_volume: { type: Number, default: 0.1 }
+                    max_volume: { type: Number, default: 0.1 },
+                    base_price: { type: Number, default: 15 }
                 },
                 car: {
                     max_weight: { type: Number, default: 100 },
-                    max_volume: { type: Number, default: 1 }
+                    max_volume: { type: Number, default: 1 },
+                    base_price: { type: Number, default: 30 }
                 },
                 truck: {
                     max_weight: { type: Number, default: 1000 },
-                    max_volume: { type: Number, default: 10 }
+                    max_volume: { type: Number, default: 10 },
+                    base_price: { type: Number, default: 100 }
                 }
             },
             bike_weight_threshold: { type: Number, default: 10 },

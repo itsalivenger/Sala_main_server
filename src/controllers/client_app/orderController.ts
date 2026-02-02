@@ -71,11 +71,36 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
 
     let subtotal = 0;
     let totalWeight = 0;
+    let totalVolume = 0; // In m3
 
     items.forEach(item => {
         subtotal += item.price * item.quantity;
         totalWeight += (item.unitWeight || 0) * item.quantity;
+
+        // Calculate volume for each item: (L * W * H) / 1,000,000 to get m3
+        if (item.dimensions) {
+            const itemVol = (item.dimensions.length * item.dimensions.width * item.dimensions.height) / 1000000;
+            totalVolume += itemVol * item.quantity;
+        }
     });
+
+    // Determine Vehicle Type based on thresholds
+    let vehicleType: 'bike' | 'car' | 'truck' = 'bike';
+    const l = settings.livreur;
+
+    if (totalWeight > l.car_weight_threshold || totalVolume > l.car_volume_threshold) {
+        vehicleType = 'truck';
+    } else if (totalWeight > l.bike_weight_threshold || totalVolume > l.bike_volume_threshold) {
+        vehicleType = 'car';
+    }
+
+    // Use vehicle-specific base price
+    const baseFee = l.vehicle_limits[vehicleType].base_price || settings.delivery_base_price;
+
+    const pricePerKm = settings?.delivery_price_per_km || 5;
+    const feePerKg = settings?.delivery_price_per_weight_unit || 5;
+    const marginPercent = (settings?.platform_margin_percentage || 15) / 100;
+    const taxRate = (settings?.tax_percentage ?? 20) / 100;
 
     let distance = 0;
     if (pickup && dropoff) {
@@ -98,12 +123,12 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const tax = (subtotal + deliveryFee) * taxRate;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
-    // Calculation logged only in error case or for critical debugging (removed for production feel)
-
     // Return everything in DH (Floats) as requested
     return {
         subtotal: parseFloat(subtotal.toFixed(2)),
         totalWeight: parseFloat(totalWeight.toFixed(2)),
+        totalVolume: parseFloat(totalVolume.toFixed(6)),
+        vehicleType,
         distance: parseFloat(distance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         platformMargin: parseFloat(platformMargin.toFixed(2)),
@@ -116,6 +141,7 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
         dbTaxRate: settings.tax_percentage,
         dbMarginRate: settings.platform_margin_percentage
     };
+
 };
 
 /**
