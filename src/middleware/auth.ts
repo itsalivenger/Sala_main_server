@@ -59,5 +59,9 @@ export const authorize = (...roles: string[]) => {
         next();
     };
 };
-// isAdmin combined middleware for convenience
-export const isAdmin = [protect, authorize('admin')];
+// Convenience middleware for admin-only routes
+export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+    protect(req, res, () => {
+        authorize('admin')(req, res, next);
+    });
+};

@@ -328,6 +328,50 @@ class WalletService {
             if (!session) internalSession.endSession();
         }
     }
+
+    /**
+     * Requests a withdrawal and synchronizes both Wallet and Livreur models.
+     */
+    async requestWithdrawal(livreurId: string, amount: number, session?: mongoose.ClientSession): Promise<{ success: boolean; message?: string }> {
+        const internalSession = session || await mongoose.startSession();
+        if (!session) internalSession.startTransaction();
+
+        try {
+            const wallet = await this.getOrCreateWallet(livreurId, internalSession);
+
+            if (wallet.balance < amount) {
+                throw new Error('Solde insuffisant');
+            }
+
+            // Deduct from wallet
+            wallet.balance = parseFloat((wallet.balance - amount).toFixed(2));
+            await wallet.save({ session: internalSession });
+
+            // Sync with Livreur model
+            await (mongoose.model('Livreur')).findByIdAndUpdate(livreurId, {
+                walletBalance: wallet.balance
+            }).session(internalSession);
+
+            // Create Ledger Entry
+            await WalletTransaction.create([{
+                walletId: wallet._id,
+                type: TransactionType.WITHDRAWAL,
+                amount: -amount,
+                referenceType: 'Withdrawal',
+                referenceId: new mongoose.Types.ObjectId(),
+                description: 'Demande de retrait initiée',
+            }], { session: internalSession });
+
+            if (!session) await (internalSession as mongoose.ClientSession).commitTransaction();
+            return { success: true };
+        } catch (error: any) {
+            if (!session) await (internalSession as mongoose.ClientSession).abortTransaction();
+            console.error('Withdrawal Request Error:', error.message);
+            return { success: false, message: error.message };
+        } finally {
+            if (!session) internalSession.endSession();
+        }
+    }
 }
 
 export default new WalletService();
