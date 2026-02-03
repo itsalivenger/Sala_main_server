@@ -3,7 +3,7 @@ import PDFDocument from 'pdfkit';
 import Order from '../../models/Order';
 import path from 'path';
 import fs from 'fs';
-const ArabicReshaper = require('arabic-persian-reshaper').ArabicReshaper;
+const ArabicReshaper = require('arabic-persian-reshaper');
 const bidi = require('bidi-js');
 const bidiEngine = bidi();
 
@@ -31,8 +31,8 @@ export const downloadReceipt = async (req: Request, res: Response) => {
         doc.pipe(res);
 
         // --- HEADER ---
-        const assetsBase = path.join(__dirname, '..', '..', '..', '..', 'assets');
-        const publicBase = path.join(__dirname, '..', '..', '..', '..', 'public');
+        const assetsBase = path.join(__dirname, '..', '..', '..', 'assets');
+        const publicBase = path.join(__dirname, '..', '..', '..', 'public');
         const arabicFontPath = path.join(publicBase, 'NotoSansArabic-Regular.ttf');
 
         // Register Fonts
