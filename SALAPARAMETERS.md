@@ -41,29 +41,58 @@ Configuration opérationnelle et limites pour la flotte de livreurs.
 | `min_rating_to_work` | Note minimale qu'un livreur doit maintenir pour être actif. | 0.0 - 5.0 |
 | `max_active_orders` | Nombre maximal de commandes simultanées pour un livreur. | Entier |
 
-### ⚖️ Seuils de Matching (Logique de Sélection de Véhicule)
-Détermine quel type de véhicule peut voir quelle commande en fonction de la charge.
+### 📦 Limites Physiques & Tarifs (Vehicle Limits)
+Capacités maximales au-delà desquelles le véhicule ne peut plus prendre la commande. Ces valeurs sont aussi utilisées pour la **logique de matching** : si une commande dépasse les limites d'une Moto, elle est automatiquement assignée à une Voiture.
 
-| Paramètre | Description | Unité |
-|-----------|-------------|-------|
-| `bike_weight_threshold` | Si poids > seuil, la commande passe en catégorie supérieure (Voiture). | Kg |
-| `bike_volume_threshold` | Si volume > seuil, la commande passe en catégorie supérieure (Voiture). | m³ |
-| `car_weight_threshold` | Si poids > seuil, la commande passe en catégorie supérieure (Camion). | Kg |
-| `car_volume_threshold` | Si volume > seuil, la commande passe en catégorie supérieure (Camion). | m³ |
-
-### 📦 Limites Physiques (Vehicle Limits)
-Capacités maximales strictes par type de véhicule.
-- **Moto (Bike)**: `max_weight` (Kg), `max_volume` (m³)
-- **Voiture (Car)**: `max_weight` (Kg), `max_volume` (m³)
-- **Camionnette (Truck)**: `max_weight` (Kg), `max_volume` (m³)
-
----
-
-## ⚙️ Limites de la Plateforme
-| Paramètre | Description | Unité |
-|-----------|-------------|-------|
-| `max_categories` | Nombre maximal de catégories de produits actives autorisées. | Entier |
+- **Moto (Bike)**: 
+  - `max_weight`: Poids total maximal des articles (Kg). 
+  - `max_volume`: Volume total maximal (m³). Idéal pour petits colis/sacs.
+  - `base_price`: Frais de base spécifiques pour la moto (MAD).
+- **Voiture (Car)**: 
+  - `max_weight`: Poids total maximal (Kg). 
+  - `max_volume`: Volume total maximal (m³). Convient pour les courses moyennes ou fragiles.
+  - `base_price`: Frais de base spécifiques pour la voiture (MAD).
+- **Camionnette (Truck)**: 
+  - `max_weight`: Poids total maximal (Kg). 
+  - `max_volume`: Volume total maximal (m³). Pour les articles encombrants ou lourds.
+  - `base_price`: Frais de base spécifiques pour le camion (MAD).
 
 ---
 
-*Dernière mise à jour : 22 Janvier 2026*
+## 🔗 Intégration & Récupération (Fetching)
+
+To use these values in other applications or services of the SALA ecosystem:
+
+### 📡 API Endpoints
+- **Admin App**: The parameters are retrieved via `GET /api/admin/wallet/settings`.
+- **Livreur App**: The limits and base rates are sent upon login or via order details if necessary.
+
+### 💻 Code Backend (Node.js/Mongoose)
+To retrieve the parameters directly from the main server:
+```typescript
+import PlatformSettings from './models/PlatformSettings';
+
+const settings = await PlatformSettings.findOne();
+const bikeLimit = settings.livreur.vehicle_limits.bike.max_weight; // Used for matching logic
+const bikeBasePrice = settings.livreur.vehicle_limits.bike.base_price;
+```
+
+### 🛠️ Structure de Données (JSON)
+The `PlatformSettings` document follows this tree structure for vehicle limits and rates:
+```json
+{
+  "livreur": {
+    "vehicle_limits": {
+      "bike": { "max_weight": 10, "max_volume": 0.1, "base_price": 15 },
+      "car": { "max_weight": 100, "max_volume": 1, "base_price": 30 },
+      "truck": { "max_weight": 1000, "max_volume": 10, "base_price": 100 }
+    },
+    "max_active_orders": 3
+  }
+}
+```
+
+---
+
+*Dernière mise à jour : 02 Février 2026*
+

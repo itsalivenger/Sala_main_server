@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import Livreur from '../../models/Livreur';
 import smsService from '../../services/smsService';
+import PlatformSettings from '../../models/PlatformSettings';
 
 // Helper to generate 6-digit OTP
 const generateOTP = () => {
@@ -95,6 +96,20 @@ export const verifyOtp = async (req: Request, res: Response) => {
             res.status(400).json({ success: false, message: 'Code invalide ou expiré' });
             return;
         }
+
+        // --- ENFORCE MIN RATING LIMIT ---
+        const settings = await PlatformSettings.findOne();
+        const minRating = settings?.livreur?.min_rating_to_work || 4;
+
+        if (livreur.averageRating > 0 && livreur.averageRating < minRating) {
+            console.warn(`[LIVREUR AUTH] Login Blocked: Rating ${livreur.averageRating} too low for ${phoneNumber}`);
+            res.status(403).json({
+                success: false,
+                message: `Votre compte est temporairement inactif car votre note moyenne (${livreur.averageRating.toFixed(1)}) est inférieure au minimum requis (${minRating}). Veuillez contacter le support.`
+            });
+            return;
+        }
+        // --------------------------------
 
         // Clear OTP
         livreur.otp = undefined;

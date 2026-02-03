@@ -57,33 +57,78 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
 /**
  * Helper to calculate order pricing
  */
-const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
+export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
     const settings = await PlatformSettings.findOne();
     if (!settings) {
         throw new Error('Platform configuration missing. Please setup PlatformSettings in the database.');
     }
 
-    const baseFee = settings.delivery_base_price;
-    const pricePerKm = settings.delivery_price_per_km;
-    const feePerKg = settings.delivery_price_per_weight_unit;
-    const marginPercent = settings.platform_margin_percentage / 100;
-    const TAX_PERCENT = settings.tax_percentage / 100;
+    const { livreur: l, client: cSettings } = settings;
+    const pricePerKm = settings.delivery_price_per_km || 5;
+    const feePerKg = settings.delivery_price_per_weight_unit || 5;
+    const marginPercent = (settings.platform_margin_percentage || 15) / 100;
+    const taxRate = (settings.tax_percentage ?? 20) / 100;
 
     let subtotal = 0;
     let totalWeight = 0;
+    let totalVolume = 0; // In m3
+
+    // Fetch products to ensure we have dimensions if not provided
+    const productIds = items.map(i => i._id);
+    const products = await Product.find({ _id: { $in: productIds } });
 
     items.forEach(item => {
         subtotal += item.price * item.quantity;
         totalWeight += (item.unitWeight || 0) * item.quantity;
+
+        // Try to get dimensions from item or from fetched product
+        const product = products.find(p => p._id.toString() === (item._id || '').toString());
+        const dimensions = item.dimensions || product?.dimensions;
+
+        if (dimensions) {
+            const itemVol = (dimensions.length * dimensions.width * dimensions.height) / 1000000;
+            totalVolume += itemVol * item.quantity;
+        }
     });
+
+    // Determine Vehicle Type (for base price logic)
+    // Uses the strict limits defined in vehicle_limits
+    let vehicleType: 'bike' | 'car' | 'truck' = 'bike';
+
+    // Check if Truck is needed (Exceeds Car limits)
+    if (totalWeight > l.vehicle_limits.car.max_weight || totalVolume > l.vehicle_limits.car.max_volume) {
+        vehicleType = 'truck';
+    }
+    // Check if Car is needed (Exceeds Bike limits)
+    else if (totalWeight > l.vehicle_limits.bike.max_weight || totalVolume > l.vehicle_limits.bike.max_volume) {
+        vehicleType = 'car';
+    }
+    // Default is bike if within limits
+
+    // Determine Required Vehicle (for UI metadata)
+    let requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto';
+    let vehicleTypeLabel = 'Format Léger';
+    let vehicleIcon = 'bicycle-outline';
+
+    if (vehicleType === 'truck') {
+        requiredVehicle = 'large_car';
+        vehicleTypeLabel = 'Grand Format';
+        vehicleIcon = 'truck-outline';
+    } else if (vehicleType === 'car') {
+        requiredVehicle = 'small_car';
+        vehicleTypeLabel = 'Format Moyen';
+        vehicleIcon = 'car-outline';
+    }
+
+    // Use vehicle-specific base price
+    const baseFee = l.vehicle_limits[vehicleType].base_price || settings.delivery_base_price;
 
     let distance = 0;
     if (pickup && dropoff) {
         const route = await getRoadDistance(pickup, dropoff);
         if (route.distance > 0) {
-            distance = route.distance / 1000; // OSRM returns meters, convert to KM
+            distance = route.distance / 1000; // meters to KM
         } else {
-            // Fallback to Haversine if OSRM fails
             distance = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
         }
     }
@@ -93,26 +138,27 @@ const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) 
     const deliveryFee = baseFee + distanceFee + weightFee;
 
     const platformMargin = subtotal * marginPercent;
-
-    // Tax is 20% of (Subtotal + DeliveryFee)
-    const tax = (subtotal + deliveryFee) * TAX_PERCENT;
+    const tax = (subtotal + deliveryFee) * taxRate;
     const total = subtotal + deliveryFee + platformMargin + tax;
 
-    // Calculation logged only in error case or for critical debugging (removed for production feel)
-
-    // Return everything in DH (Floats) as requested
+    // Return everything in DH (Floats)
     return {
         subtotal: parseFloat(subtotal.toFixed(2)),
         totalWeight: parseFloat(totalWeight.toFixed(2)),
+        totalVolume: parseFloat(totalVolume.toFixed(6)),
+        vehicleType,
+        requiredVehicle,
+        vehicleTypeLabel,
+        vehicleIcon,
         distance: parseFloat(distance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         platformMargin: parseFloat(platformMargin.toFixed(2)),
-        livreurNet: parseFloat(deliveryFee.toFixed(2)), // Driver gets the delivery fee
+        livreurNet: parseFloat(deliveryFee.toFixed(2)),
         tax: parseFloat(tax.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         discount: 0,
-        minOrderValue: settings.client.min_order_value,
-        freeDeliveryThreshold: settings.client.free_delivery_threshold,
+        minOrderValue: cSettings.min_order_value,
+        freeDeliveryThreshold: cSettings.free_delivery_threshold,
         dbTaxRate: settings.tax_percentage,
         dbMarginRate: settings.platform_margin_percentage
     };
@@ -176,6 +222,10 @@ export const createOrder = async (req: Request, res: Response) => {
             clientId,
             items: enrichedItems,
             totalWeight: pricing.totalWeight,
+            totalVolume: pricing.totalVolume,
+            requiredVehicle: pricing.requiredVehicle,
+            vehicleTypeLabel: pricing.vehicleTypeLabel,
+            vehicleIcon: pricing.vehicleIcon,
             distance: pricing.distance,
             pickupLocation,
             dropoffLocation,

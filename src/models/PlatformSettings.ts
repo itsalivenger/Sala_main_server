@@ -13,14 +13,10 @@ export interface IPlatformSettings extends Document {
         radius_max_km: number;
         min_rating_to_work: number;
         vehicle_limits: {
-            bike: { max_weight: number; max_volume: number };
-            car: { max_weight: number; max_volume: number };
-            truck: { max_weight: number; max_volume: number };
+            bike: { max_weight: number; max_volume: number; base_price: number };
+            car: { max_weight: number; max_volume: number; base_price: number };
+            truck: { max_weight: number; max_volume: number; base_price: number };
         };
-        bike_weight_threshold: number;
-        bike_volume_threshold: number;
-        car_weight_threshold: number;
-        car_volume_threshold: number;
         max_active_orders: number;
     };
     client: {
@@ -29,6 +25,7 @@ export interface IPlatformSettings extends Document {
         referral_bonus_amount: number;       // e.g., 5.00 DH
         support_target_minutes: number;
         free_delivery_threshold: number;    // e.g., 200.00 DH
+        max_order_volume: number;           // e.g., 0.3 m3
     };
     max_categories: number;
     updatedAt: Date;
@@ -50,21 +47,20 @@ const PlatformSettingsSchema: Schema = new Schema(
             vehicle_limits: {
                 bike: {
                     max_weight: { type: Number, default: 10 },
-                    max_volume: { type: Number, default: 0.1 }
+                    max_volume: { type: Number, default: 0.1 },
+                    base_price: { type: Number, default: 15 }
                 },
                 car: {
                     max_weight: { type: Number, default: 100 },
-                    max_volume: { type: Number, default: 1 }
+                    max_volume: { type: Number, default: 1 },
+                    base_price: { type: Number, default: 30 }
                 },
                 truck: {
                     max_weight: { type: Number, default: 1000 },
-                    max_volume: { type: Number, default: 10 }
+                    max_volume: { type: Number, default: 10 },
+                    base_price: { type: Number, default: 100 }
                 }
             },
-            bike_weight_threshold: { type: Number, default: 10 },
-            bike_volume_threshold: { type: Number, default: 0.1 },
-            car_weight_threshold: { type: Number, default: 100 },
-            car_volume_threshold: { type: Number, default: 1 },
             max_active_orders: { type: Number, default: 3 }
         },
         client: {
@@ -72,7 +68,8 @@ const PlatformSettingsSchema: Schema = new Schema(
             first_order_discount: { type: Number, default: 10 },
             referral_bonus_amount: { type: Number, default: 5 },
             support_target_minutes: { type: Number, default: 15 },
-            free_delivery_threshold: { type: Number, default: 200 }
+            free_delivery_threshold: { type: Number, default: 200 },
+            max_order_volume: { type: Number, default: 0.3 }
         },
         max_categories: { type: Number, default: 20 }
     },

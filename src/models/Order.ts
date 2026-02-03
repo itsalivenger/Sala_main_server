@@ -17,6 +17,10 @@ export interface IOrder extends Document {
         image?: string; // Added thumbnail at order time
     }>;
     totalWeight: number; // Sum of items weight
+    totalVolume: number; // Sum of items volume (m3)
+    requiredVehicle: 'moto' | 'small_car' | 'large_car';
+    vehicleTypeLabel: string;
+    vehicleIcon: string;
     distance?: number; // Distance in KM
 
     // Locations
@@ -140,6 +144,14 @@ const OrderSchema: Schema = new Schema(
             }
         ],
         totalWeight: { type: Number, default: 0 },
+        totalVolume: { type: Number, default: 0 },
+        requiredVehicle: {
+            type: String,
+            enum: ['moto', 'small_car', 'large_car'],
+            default: 'moto'
+        },
+        vehicleTypeLabel: { type: String, default: 'Format Léger' },
+        vehicleIcon: { type: String, default: 'bicycle-outline' },
         distance: { type: Number, default: 0 },
 
         pickupLocation: {
