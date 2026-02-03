@@ -45,6 +45,13 @@ export interface IOrder extends Document {
         tax: number;
         total: number; // Client pays this
         discount: number;
+        appliedBasePrice?: number;
+        appliedPricePerKm?: number;
+        appliedPricePerKg?: number;
+        dbTaxRate?: number;
+        dbMarginRate?: number;
+        minOrderValue?: number;
+        freeDeliveryThreshold?: number;
     };
 
     // Payment
@@ -173,6 +180,13 @@ const OrderSchema: Schema = new Schema(
             tax: { type: Number, default: 0 },
             total: { type: Number, default: 0 },
             discount: { type: Number, default: 0 },
+            appliedBasePrice: { type: Number },
+            appliedPricePerKm: { type: Number },
+            appliedPricePerKg: { type: Number },
+            dbTaxRate: { type: Number },
+            dbMarginRate: { type: Number },
+            minOrderValue: { type: Number },
+            freeDeliveryThreshold: { type: Number },
         },
 
         paymentStatus: {

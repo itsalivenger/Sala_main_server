@@ -63,9 +63,17 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         throw new Error('Platform configuration missing. Please setup PlatformSettings in the database.');
     }
 
-    const { livreur: l, client: cSettings } = settings;
-    const marginPercent = (settings.platform_margin_percentage || 15) / 100;
-    const taxRate = (settings.tax_percentage ?? 20) / 100;
+    const l = settings.livreur || {
+        vehicle_limits: {
+            bike: {},
+            car: {},
+            truck: {}
+        }
+    };
+    const cSettings = settings.client || {};
+
+    const marginPercent = (settings.platform_margin_percentage || 0) / 100;
+    const taxRate = (settings.tax_percentage ?? 0) / 100;
 
     let subtotal = 0;
     let totalWeight = 0;
@@ -118,11 +126,13 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         vehicleIcon = 'car';
     }
 
-    // Use vehicle-specific pricing
+    // Use vehicle-specific pricing from documentation
     const vehicleSettings = l.vehicle_limits[vehicleType];
-    const baseFee = vehicleSettings.base_price || 15;
-    const pricePerKm = vehicleSettings.price_per_km || 5;
-    const feePerKg = vehicleSettings.price_per_weight || 5;
+    console.log(`[DEBUG_PRICING] Vehicle: ${vehicleType}, Settings:`, vehicleSettings);
+
+    const baseFee = vehicleSettings.base_price; // Removed fallback
+    const pricePerKm = vehicleSettings.price_per_km; // Removed fallback
+    const feePerKg = vehicleSettings.price_per_weight; // Removed fallback
 
     let distance = 0;
     if (pickup && dropoff) {
@@ -134,9 +144,9 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         }
     }
 
-    const distanceFee = distance * pricePerKm;
-    const weightFee = totalWeight * feePerKg;
-    const deliveryFee = baseFee + distanceFee + weightFee;
+    const distanceFee = distance * (pricePerKm || 0);
+    const weightFee = totalWeight * (feePerKg || 0);
+    const deliveryFee = (baseFee || 0) + distanceFee + weightFee;
 
     const platformMargin = subtotal * marginPercent;
     const tax = (subtotal + deliveryFee) * taxRate;
@@ -161,7 +171,13 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         minOrderValue: cSettings.min_order_value,
         freeDeliveryThreshold: cSettings.free_delivery_threshold,
         dbTaxRate: settings.tax_percentage,
-        dbMarginRate: settings.platform_margin_percentage
+        dbMarginRate: settings.platform_margin_percentage,
+        // Detailed rates for debug/UI - NO FALLBACKS RETURNED
+        appliedBasePrice: baseFee,
+        appliedPricePerKm: pricePerKm,
+        appliedPricePerKg: feePerKg,
+        appliedDistanceFee: parseFloat(distanceFee.toFixed(2)),
+        appliedWeightFee: parseFloat(weightFee.toFixed(2))
     };
 };
 
