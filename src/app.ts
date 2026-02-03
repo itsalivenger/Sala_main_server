@@ -37,6 +37,7 @@ import livreurWalletRoutes from './routes/livreur/wallet';
 import livreurOrdersRoutes from './routes/livreur/orders';
 import livreurAvailabilityRoutes from './routes/livreur/availability';
 import livreurPerformanceRoutes from './routes/livreur/performance';
+import livreurUploadRoutes from './routes/livreur/upload';
 
 const app: Application = express();
 
@@ -86,6 +87,7 @@ app.use('/api/livreur/auth', livreurAuthRoutes);
 app.use('/api/livreur/wallet', livreurWalletRoutes);
 app.use('/api/livreur/availability', livreurAvailabilityRoutes);
 app.use('/api/livreur/performance', livreurPerformanceRoutes);
+app.use('/api/livreur/upload', livreurUploadRoutes);
 
 // --- ADMIN ROUTES ---
 app.use('/api/admin/newsletter', newsletterRoutes);

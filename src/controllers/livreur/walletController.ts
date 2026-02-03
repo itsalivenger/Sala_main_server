@@ -67,32 +67,17 @@ export const requestWithdrawal = async (req: Request, res: Response) => {
             throw new Error(`Le montant minimum de retrait est de ${settings.minimum_payout_amount} MAD`);
         }
 
-        const wallet = await walletService.getOrCreateWallet(livreurId, session);
-        if (wallet.balance < amount) {
-            throw new Error('Solde insuffisant');
+        const result = await walletService.requestWithdrawal(livreurId, amount);
+
+        if (!result.success) {
+            throw new Error(result.message || 'La demande de retrait a échoué');
         }
 
-        // Atomically deduct balance
-        wallet.balance -= amount;
-        await wallet.save({ session });
-
-        // Create Withdrawal Ledger Entry
-        await WalletTransaction.create([{
-            walletId: wallet._id,
-            type: TransactionType.WITHDRAWAL,
-            amount: -amount,
-            referenceType: 'Withdrawal',
-            referenceId: new mongoose.Types.ObjectId(), // Placeholder for actual withdrawal record if needed
-            description: 'Demande de retrait initiée',
-        }], { session });
-
-        await session.commitTransaction();
         res.status(200).json({
             success: true,
             message: 'Demande de retrait enregistrée avec succès'
         });
     } catch (error: any) {
-        await session.abortTransaction();
         res.status(400).json({
             success: false,
             message: error.message

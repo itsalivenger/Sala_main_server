@@ -59,3 +59,16 @@ export const authorize = (...roles: string[]) => {
         next();
     };
 };
+
+// Convenience middleware for admin-only routes
+export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
+    await protect(req, res, () => {
+        if ((req as any).user?.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Accès refusé: Administrateur uniquement'
+            });
+        }
+        next();
+    });
+};
