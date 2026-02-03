@@ -13,9 +13,9 @@ import { getRoadDistance, getHaversineDistance } from '../../utils/routingUtils'
 // Haversine helper removed from here as it's now in routingUtils.ts.
 
 /**
- * Find the 5 closest online and available livreurs
+ * Find the closest online and available livreurs
  */
-const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, limit: number = 5) => {
+const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, limit: number = 3) => {
     try {
         // 1. Find livreurs who are currently assigned to active orders to exclude them
         const busyLivreurs = await Order.find({
@@ -194,16 +194,17 @@ export const createOrder = async (req: Request, res: Response) => {
                 actor: 'System',
                 note: 'Recherche d\'un livreur à proximité...'
             }],
+            expansionStage: 0,
             eligibleLivreurs: [] // Placeholder, will set below
         });
 
-        // Find 5 closest online and available drivers
-        const top5Ids = await getClosestLivreurs(pickupLocation);
-        newOrder.eligibleLivreurs = top5Ids;
+        // Find 3 closest online and available drivers
+        const top3Ids = await getClosestLivreurs(pickupLocation);
+        newOrder.eligibleLivreurs = top3Ids;
 
         // Trigger Push Notifications to these specific drivers
-        if (top5Ids.length > 0) {
-            const onlineLivreurs = await Livreur.find({ _id: { $in: top5Ids } }).select('pushToken');
+        if (top3Ids.length > 0) {
+            const onlineLivreurs = await Livreur.find({ _id: { $in: top3Ids } }).select('pushToken');
 
             const notificationTitle = 'Nouvelle commande à proximité !';
             const notificationBody = `Une commande de ${pricing.total} DH est disponible près de chez vous.`;

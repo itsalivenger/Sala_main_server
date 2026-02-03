@@ -95,6 +95,7 @@ export interface IOrder extends Document {
         details: string; // JSON string or text details
         timestamp: Date;
     }>;
+    expansionStage: number; // 0: 3 closest, 1: 10 closest, 2: All
     createdAt: Date;
     updatedAt: Date;
 }
@@ -117,6 +118,11 @@ const OrderSchema: Schema = new Schema(
             ref: 'Livreur',
             index: true
         }],
+        expansionStage: {
+            type: Number,
+            default: 0,
+            index: true
+        },
         status: {
             type: String,
             enum: ['CREATED', 'PAID', 'SEARCHING_FOR_LIVREUR', 'ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED_CLIENT', 'CANCELLED_ADMIN', 'REFUNDED', 'COMPLETED'],
