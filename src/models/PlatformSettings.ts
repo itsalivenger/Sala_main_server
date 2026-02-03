@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPlatformSettings extends Document {
-    weight_unit_kg: number;                 // e.g., 1 KG
     platform_margin_percentage: number;     // e.g., 15%
     minimum_payout_amount: number;          // e.g., 50.00 DH
     tax_percentage: number;                 // e.g., 20%
@@ -30,7 +29,6 @@ export interface IPlatformSettings extends Document {
 
 const PlatformSettingsSchema: Schema = new Schema(
     {
-        weight_unit_kg: { type: Number, required: true, default: 1 },
         platform_margin_percentage: { type: Number, required: true, default: 15 },
         minimum_payout_amount: { type: Number, required: true, default: 50 },
         tax_percentage: { type: Number, required: true, default: 20 },

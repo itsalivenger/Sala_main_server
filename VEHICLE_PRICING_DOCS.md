@@ -1,21 +1,21 @@
 # Vehicle-Specific Pricing Documentation
 
 ## Overview
-We have transitioned from global pricing settings to **vehicle-specific pricing** for distance (KM) and weight. This allows fine-grained control over delivery costs based on the vehicle type (Moto, Voiture, Camionnette).
+We have transitioned from global pricing settings to **vehicle-specific pricing** for distance (KM) and weight (KG). This allows fine-grained control over delivery costs based on the vehicle type (Moto, Voiture, Camionnette).
 
 ## Data Structure
-The `PlatformSettings` schema has been updated. Global fields `delivery_price_per_km` and `delivery_price_per_weight_unit` have been **removed**.
-
-Pricing is now located within `livreur.vehicle_limits[vehicleType]`.
+The `PlatformSettings` schema has been updated.
+- **Removed Global Fields**: `delivery_price_per_km`, `delivery_price_per_weight_unit`, `delivery_base_price`, and `weight_unit_kg`.
+- **New Structure**: Pricing is now located within `livreur.vehicle_limits[vehicleType]`.
 
 ### Schema Example
 ```typescript
 interface VehicleLimit {
-    max_weight: number;
-    max_volume: number;
-    base_price: number;
-    price_per_km: number;       // New Field
-    price_per_weight: number;   // New Field
+    max_weight: number;      // Maximum weight allowed for this vehicle
+    max_volume: number;      // Maximum volume allowed for this vehicle
+    base_price: number;      // Starting price for delivery
+    price_per_km: number;    // Price per Kilometer
+    price_per_weight: number;// Price per KG
 }
 
 interface PlatformSettings {
@@ -45,17 +45,18 @@ const { livreur } = settings;
 const vehicleType = 'bike'; // or 'car', 'truck' based on logic
 
 const pricePerKm = livreur.vehicle_limits[vehicleType].price_per_km || 5;
-const pricePerWeight = livreur.vehicle_limits[vehicleType].price_per_weight || 5;
+const pricePerWeight = livreur.vehicle_limits[vehicleType].price_per_weight || 5; // Price per KG
 const basePrice = livreur.vehicle_limits[vehicleType].base_price || 15;
 
 // Calculation
 const distanceFee = distanceInKm * pricePerKm;
-const weightFee = totalWeight * pricePerWeight;
+const weightFee = totalWeightInKg * pricePerWeight;
 const totalDeliveryFee = basePrice + distanceFee + weightFee;
 ```
 
-## Default Values
-If `price_per_km` or `price_per_weight` are missing (e.g., immediately after migration before admin update), you should fallback to reasonable defaults (e.g., 5 MAD).
+## Validation & Defaults
+- Ensure you handle cases where `vehicle_limits` might be missing specific fields during migration by using defaults (e.g., `|| 0`).
+- The system assumes weight is in **KG** and volume in **m³**.
 
 ## Admin Configuration
 These values are configurable in the **Admin Dashboard > Settings > Sala Settings** under the "Limites par Véhicule" section.
