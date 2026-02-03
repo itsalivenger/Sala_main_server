@@ -64,8 +64,6 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     }
 
     const { livreur: l, client: cSettings } = settings;
-    const pricePerKm = settings.delivery_price_per_km || 5;
-    const feePerKg = settings.delivery_price_per_weight_unit || 5;
     const marginPercent = (settings.platform_margin_percentage || 15) / 100;
     const taxRate = (settings.tax_percentage ?? 20) / 100;
 
@@ -120,8 +118,11 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         vehicleIcon = 'car-outline';
     }
 
-    // Use vehicle-specific base price
-    const baseFee = l.vehicle_limits[vehicleType].base_price || settings.delivery_base_price;
+    // Use vehicle-specific pricing
+    const vehicleSettings = l.vehicle_limits[vehicleType];
+    const baseFee = vehicleSettings.base_price || 15;
+    const pricePerKm = vehicleSettings.price_per_km || 5;
+    const feePerKg = vehicleSettings.price_per_weight || 5;
 
     let distance = 0;
     if (pickup && dropoff) {

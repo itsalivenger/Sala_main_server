@@ -1,9 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPlatformSettings extends Document {
-    delivery_price_per_weight_unit: number; // Note: All numeric values represent DH (Dirhams) and are stored as floats.
-    delivery_base_price: number;            // e.g., 15.00 DH
-    delivery_price_per_km: number;          // e.g., 5.00 DH
     weight_unit_kg: number;                 // e.g., 1 KG
     platform_margin_percentage: number;     // e.g., 15%
     minimum_payout_amount: number;          // e.g., 50.00 DH
@@ -13,9 +10,9 @@ export interface IPlatformSettings extends Document {
         radius_max_km: number;
         min_rating_to_work: number;
         vehicle_limits: {
-            bike: { max_weight: number; max_volume: number; base_price: number };
-            car: { max_weight: number; max_volume: number; base_price: number };
-            truck: { max_weight: number; max_volume: number; base_price: number };
+            bike: { max_weight: number; max_volume: number; base_price: number; price_per_km: number; price_per_weight: number };
+            car: { max_weight: number; max_volume: number; base_price: number; price_per_km: number; price_per_weight: number };
+            truck: { max_weight: number; max_volume: number; base_price: number; price_per_km: number; price_per_weight: number };
         };
         max_active_orders: number;
     };
@@ -33,9 +30,6 @@ export interface IPlatformSettings extends Document {
 
 const PlatformSettingsSchema: Schema = new Schema(
     {
-        delivery_price_per_weight_unit: { type: Number, required: true, default: 10 },
-        delivery_base_price: { type: Number, required: true, default: 15 },
-        delivery_price_per_km: { type: Number, required: true, default: 5 },
         weight_unit_kg: { type: Number, required: true, default: 1 },
         platform_margin_percentage: { type: Number, required: true, default: 15 },
         minimum_payout_amount: { type: Number, required: true, default: 50 },
@@ -48,17 +42,23 @@ const PlatformSettingsSchema: Schema = new Schema(
                 bike: {
                     max_weight: { type: Number, default: 10 },
                     max_volume: { type: Number, default: 0.1 },
-                    base_price: { type: Number, default: 15 }
+                    base_price: { type: Number, default: 15 },
+                    price_per_km: { type: Number, default: 5 },
+                    price_per_weight: { type: Number, default: 5 }
                 },
                 car: {
                     max_weight: { type: Number, default: 100 },
                     max_volume: { type: Number, default: 1 },
-                    base_price: { type: Number, default: 30 }
+                    base_price: { type: Number, default: 30 },
+                    price_per_km: { type: Number, default: 7 },
+                    price_per_weight: { type: Number, default: 7 }
                 },
                 truck: {
                     max_weight: { type: Number, default: 1000 },
                     max_volume: { type: Number, default: 10 },
-                    base_price: { type: Number, default: 100 }
+                    base_price: { type: Number, default: 100 },
+                    price_per_km: { type: Number, default: 10 },
+                    price_per_weight: { type: Number, default: 10 }
                 }
             },
             max_active_orders: { type: Number, default: 3 }
