@@ -59,3 +59,5 @@ export const authorize = (...roles: string[]) => {
         next();
     };
 };
+// isAdmin combined middleware for convenience
+export const isAdmin = [protect, authorize('admin')];

@@ -1,8 +1,7 @@
-import { Request, Response } from 'express';
-import Enquiry from '../../models/Enquiry';
+import Enquiry from '../models/Enquiry';
 
 // Public: Submit enquiry
-export const submitEnquiry = async (req: Request, res: Response) => {
+export const submitEnquiry = async (req: any, res: any) => {
     try {
         const { name, email, question } = req.body;
 
@@ -20,7 +19,7 @@ export const submitEnquiry = async (req: Request, res: Response) => {
 };
 
 // Admin: Get all enquiries
-export const getEnquiries = async (req: Request, res: Response) => {
+export const getEnquiries = async (req: any, res: any) => {
     try {
         const enquiries = await Enquiry.find().sort({ createdAt: -1 });
         res.json({ success: true, enquiries });
@@ -30,7 +29,7 @@ export const getEnquiries = async (req: Request, res: Response) => {
 };
 
 // Admin: Update enquiry status
-export const updateEnquiryStatus = async (req: Request, res: Response) => {
+export const updateEnquiryStatus = async (req: any, res: any) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
@@ -47,7 +46,7 @@ export const updateEnquiryStatus = async (req: Request, res: Response) => {
 };
 
 // Admin: Delete enquiry
-export const deleteEnquiry = async (req: Request, res: Response) => {
+export const deleteEnquiry = async (req: any, res: any) => {
     try {
         const { id } = req.params;
         const enquiry = await Enquiry.findByIdAndDelete(id);
