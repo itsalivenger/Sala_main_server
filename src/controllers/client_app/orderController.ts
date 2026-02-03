@@ -105,17 +105,17 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
 
     // Determine Required Vehicle (for UI metadata)
     let requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto';
-    let vehicleTypeLabel = 'Format Léger';
-    let vehicleIcon = 'bicycle-outline';
+    let vehicleTypeLabel = 'Livraison Standard (Moto)';
+    let vehicleIcon = 'motorbike';
 
     if (vehicleType === 'truck') {
         requiredVehicle = 'large_car';
-        vehicleTypeLabel = 'Grand Format';
-        vehicleIcon = 'truck-outline';
+        vehicleTypeLabel = 'Livraison Grand Volume (Camion)';
+        vehicleIcon = 'truck';
     } else if (vehicleType === 'car') {
         requiredVehicle = 'small_car';
-        vehicleTypeLabel = 'Format Moyen';
-        vehicleIcon = 'car-outline';
+        vehicleTypeLabel = 'Livraison Volumineuse (Voiture)';
+        vehicleIcon = 'car';
     }
 
     // Use vehicle-specific pricing
