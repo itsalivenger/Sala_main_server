@@ -92,12 +92,18 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     });
 
     // Determine Vehicle Type (for base price logic)
+    // Uses the strict limits defined in vehicle_limits
     let vehicleType: 'bike' | 'car' | 'truck' = 'bike';
-    if (totalWeight > l.car_weight_threshold || totalVolume > l.car_volume_threshold) {
+
+    // Check if Truck is needed (Exceeds Car limits)
+    if (totalWeight > l.vehicle_limits.car.max_weight || totalVolume > l.vehicle_limits.car.max_volume) {
         vehicleType = 'truck';
-    } else if (totalWeight > l.bike_weight_threshold || totalVolume > l.bike_volume_threshold) {
+    }
+    // Check if Car is needed (Exceeds Bike limits)
+    else if (totalWeight > l.vehicle_limits.bike.max_weight || totalVolume > l.vehicle_limits.bike.max_volume) {
         vehicleType = 'car';
     }
+    // Default is bike if within limits
 
     // Determine Required Vehicle (for UI metadata)
     let requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto';

@@ -3,13 +3,11 @@ import PDFDocument from 'pdfkit';
 import Order from '../../models/Order';
 import path from 'path';
 import fs from 'fs';
-const ArabicReshaper = require('arabic-persian-reshaper').ArabicReshaper;
-const bidi = require('bidi-js');
-const bidiEngine = bidi();
 
 /**
  * GET /api/admin/orders/:id/receipt
  * Generates and downloads a PDF receipt for a specific order (Admin version)
+ * Simplified Version: Strips Arabic characters to ensure stability and correct formatting.
  */
 export const downloadReceipt = async (req: Request, res: Response) => {
     try {
@@ -20,69 +18,48 @@ export const downloadReceipt = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: 'Commande non trouvée' });
         }
 
-        // Only allow receipts for delivered orders
-        if (order.status !== 'DELIVERED') {
+        if (order.status !== 'DELIVERED' && order.status !== 'COMPLETED') {
             return res.status(400).json({ success: false, message: 'Le reçu est uniquement disponible pour les commandes livrées' });
         }
 
         const doc = new PDFDocument({ margin: 50 });
 
-        // Set response headers
         const filename = `Recu_SALA_ADMIN_${order.orderId || orderId.slice(-4)}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
-        // Pipe the PDF into the response
         doc.pipe(res);
 
-        // --- HEADER ---
-        const publicBase = path.join(__dirname, '..', '..', '..', '..', 'public');
-        const candidateLogosBase = path.join(publicBase, 'candidate_logos');
-        const arabicFontPath = path.join(publicBase, 'NotoSansArabic-Regular.ttf');
-
-        // Register Fonts
-        if (fs.existsSync(arabicFontPath)) {
-            doc.registerFont('Arabic', arabicFontPath);
-        }
+        // --- PATH CONFIG ---
+        const serverRoot = path.join(__dirname, '..', '..', '..');
+        const projectRoot = path.join(serverRoot, '..');
+        const candidateLogosBase = path.join(projectRoot, 'public', 'candidate_logos');
+        // We stick to standard fonts (Helvetica) to avoid any embedding/reshaping issues
         doc.font('Helvetica');
 
-        // Helper for Arabic support
-        const processArabic = (text: string) => {
+        // Helper: Strip Arabic characters to "ignore" them and preserve layout
+        const cleanText = (text: string) => {
             if (!text) return "";
-            const hasArabic = /[\u0600-\u06FF]/.test(text);
-            if (!hasArabic) return text;
-
-            try {
-                const reshaper = new ArabicReshaper();
-                const reshaped = reshaper.reshape(text);
-                const bidiResult = bidiEngine.getReorderData(reshaped);
-                return bidiResult.reorderedText;
-            } catch (err) {
-                console.error('[PDF-ADMIN] Arabic Processing Error:', err);
-                return text;
-            }
+            // Replace Arabic Unicode ranges with empty string
+            // Ranges: Standard Arabic, Supplement, Extended-A, Presentation Forms-A, Presentation Forms-B
+            return text.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '').trim();
         };
 
         const writeText = (text: string, x?: number, y?: number, options?: any) => {
-            const isArabic = /[\u0600-\u06FF]/.test(text);
-            const processed = processArabic(text);
-
-            if (isArabic && fs.existsSync(arabicFontPath)) {
-                doc.font('Arabic');
-            } else {
-                doc.font('Helvetica');
-            }
+            if (!text) return;
+            const safeText = cleanText(text);
+            if (!safeText) return; // Skip if text becomes empty
 
             if (x !== undefined && y !== undefined) {
-                doc.text(processed, x, y, options);
+                doc.text(safeText, x, y, options);
             } else {
-                doc.text(processed, options);
+                doc.text(safeText, options);
             }
-
-            doc.font('Helvetica');
         };
 
-        // Add logo
+        // --- CONTENT ---
+
+        // Logo
         const logoPath = path.join(candidateLogosBase, 'logo_sala.png');
         if (fs.existsSync(logoPath)) {
             doc.image(logoPath, 50, 45, { width: 80 });
@@ -90,16 +67,13 @@ export const downloadReceipt = async (req: Request, res: Response) => {
             doc.fontSize(25).fillColor('#E91E63').text('SALA', 50, 45);
         }
 
-        doc.fillColor('#444444')
-            .fontSize(20)
-            .text('RECU DE COMMANDE', 200, 50, { align: 'right' });
+        doc.fillColor('#444444').fontSize(20).text('RECU DE COMMANDE', 200, 50, { align: 'right' });
 
         doc.fontSize(10)
             .text(`Date: ${new Date(order.createdAt).toLocaleDateString('fr-FR')}`, 200, 75, { align: 'right' })
             .text(`Commande #: ${order.orderId || order._id}`, 200, 90, { align: 'right' })
             .moveDown();
 
-        // --- INFO SECTION ---
         doc.fillColor('#000000').fontSize(12);
         writeText('Informations Client', 50, 200, { underline: true });
 
@@ -110,6 +84,7 @@ export const downloadReceipt = async (req: Request, res: Response) => {
 
         doc.fontSize(10);
         const client: any = order.clientId;
+        // The cleanText helper inside writeText will ensure only Latin name/phone parts are shown
         writeText(`Nom: ${client?.name || 'N/A'}`, leftX, startY);
         writeText(`Tel: ${client?.phoneNumber || 'N/A'}`, leftX, doc.y + 5);
 
@@ -160,10 +135,8 @@ export const downloadReceipt = async (req: Request, res: Response) => {
         writeText('TOTAL:', 370, subtotalY + 65, { width: 90, align: 'right' });
         writeText(`${order.pricing.total.toFixed(2)} Dh`, 470, subtotalY + 65, { width: 90, align: 'right' });
 
-        // --- FOOTER ---
         doc.fillColor('#aaaaaa').fontSize(10);
         writeText('Document généré par l\'administration SALA.', 50, 700, { align: 'center', width: 500 });
-
         doc.end();
 
     } catch (error) {

@@ -17,10 +17,6 @@ export interface IPlatformSettings extends Document {
             car: { max_weight: number; max_volume: number; base_price: number };
             truck: { max_weight: number; max_volume: number; base_price: number };
         };
-        bike_weight_threshold: number;
-        bike_volume_threshold: number;
-        car_weight_threshold: number;
-        car_volume_threshold: number;
         max_active_orders: number;
     };
     client: {
@@ -65,10 +61,6 @@ const PlatformSettingsSchema: Schema = new Schema(
                     base_price: { type: Number, default: 100 }
                 }
             },
-            bike_weight_threshold: { type: Number, default: 10 },
-            bike_volume_threshold: { type: Number, default: 0.1 },
-            car_weight_threshold: { type: Number, default: 100 },
-            car_volume_threshold: { type: Number, default: 1 },
             max_active_orders: { type: Number, default: 3 }
         },
         client: {
