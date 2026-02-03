@@ -90,9 +90,14 @@ export const getOrderDetails = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
         }
 
+        // Fetch Global Platform Settings for Vehicle Limits
+        const settings = await PlatformSettings.findOne();
+        const vehicleLimits = settings?.livreur?.vehicle_limits || {};
+
         res.status(200).json({
             success: true,
-            order
+            order,
+            vehicleLimits
         });
     } catch (error: any) {
         console.error('[LIVREUR_ORDERS] Get Details Error:', error);
