@@ -43,10 +43,11 @@ export const login = async (req: Request, res: Response) => {
         );
 
         // Set HttpOnly Cookie
+        const isProduction = process.env.NODE_ENV === 'production';
         res.cookie('admin_token', token, {
             httpOnly: true,
-            secure: true, // Always true for SameSite: none
-            sameSite: 'none',
+            secure: isProduction, // Only secure in production (HTTPS)
+            sameSite: isProduction ? 'none' : 'lax', // Use 'none' for cross-domain prod, 'lax' for local dev
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
             path: '/'
         });
