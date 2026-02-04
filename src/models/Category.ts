@@ -25,7 +25,7 @@ const CategorySchema: Schema = new Schema(
 );
 
 // Pre-save hook to generate slug if not provided or name changes
-CategorySchema.pre<ICategory>('save', function (next) {
+CategorySchema.pre<ICategory>('save', function (this: ICategory, next: any) {
     if (this.isModified('name')) {
         this.slug = this.name
             .toLowerCase()

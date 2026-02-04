@@ -12,19 +12,18 @@ class WalletService {
         let settings = await PlatformSettings.findOne();
         if (!settings) {
             settings = await PlatformSettings.create({
-                delivery_price_per_weight_unit: 10,
-                weight_unit_kg: 1,
                 platform_margin_percentage: 15,
                 minimum_payout_amount: 50,
                 tax_percentage: 20,
+                max_categories: 20,
                 livreur: {
                     min_funds_withdrawal: 50,
                     radius_max_km: 10,
                     min_rating_to_work: 4,
                     vehicle_limits: {
-                        bike: { max_weight: 10, max_volume: 0.1 },
-                        car: { max_weight: 100, max_volume: 1 },
-                        truck: { max_weight: 1000, max_volume: 10 }
+                        bike: { max_weight: 10, max_volume: 0.1, base_price: 15, price_per_km: 5, price_per_weight: 5 },
+                        car: { max_weight: 100, max_volume: 1, base_price: 30, price_per_km: 7, price_per_weight: 7 },
+                        truck: { max_weight: 1000, max_volume: 10, base_price: 100, price_per_km: 10, price_per_weight: 10 }
                     },
                     max_active_orders: 3
                 },
@@ -33,7 +32,8 @@ class WalletService {
                     first_order_discount: 10,
                     referral_bonus_amount: 5,
                     support_target_minutes: 15,
-                    free_delivery_threshold: 200
+                    free_delivery_threshold: 200,
+                    max_order_volume: 0.3
                 }
             });
         }
