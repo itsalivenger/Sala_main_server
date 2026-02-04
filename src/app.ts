@@ -57,7 +57,8 @@ const allowedOrigins = [
     'http://localhost:3001',
     'http://127.0.0.1:3001',
     'https://sala-site-c9eorex9w-itsalivengers-projects.vercel.app',
-    'https://sala-site-itsalivengers-projects.vercel.app'
+    'https://sala-site-itsalivengers-projects.vercel.app',
+    'https://sala-site-xi.vercel.app'
 ];
 if (process.env.ALLOWED_ORIGINS) {
     allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
