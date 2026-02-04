@@ -191,7 +191,7 @@ export const getLivreurProfile = async (req: Request, res: Response) => {
         // Calculate On-Time Rate & Reliability Score
         let onTimeOrders = 0;
         let deliveredWithTimeline = 0;
-        let cancelledByLivreur = orders.filter(o => o.status === 'CANCELLED_ADMIN' && o.cancellation?.cancelledBy === 'livreur').length;
+        const cancelledByLivreur = orders.filter(o => o.status === 'CANCELLED_ADMIN' && o.cancellation?.cancelledBy === 'livreur').length;
 
         orders.forEach(o => {
             if (isCompleted(o.status)) {

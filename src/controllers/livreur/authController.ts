@@ -37,7 +37,7 @@ export const login = async (req: Request, res: Response) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-        let livreur = await Livreur.findOne({ phoneNumber });
+        const livreur = await Livreur.findOne({ phoneNumber });
 
         if (!livreur) {
             console.log(`[LIVREUR AUTH] Checking Livreur: ${phoneNumber} -> NOT FOUND in database.`);

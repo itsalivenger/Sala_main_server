@@ -59,11 +59,13 @@ if (process.env.ALLOWED_ORIGINS) {
 
 app.use(cors({
     origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
+
+        if (allowedOrigins.some(allowed => origin === allowed || (allowed.endsWith('/') && origin === allowed.slice(0, -1)))) {
             callback(null, true);
         } else {
-            console.warn(`CORS blocked for origin: ${origin}`);
+            console.warn(`[SALA_CORS] Blocked origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
@@ -75,12 +77,6 @@ app.use(helmet({
 }));
 
 app.use(morgan('dev'));
-
-// --- DIAGNOSTIC SECTION ---
-app.use((req, res, next) => {
-    console.log(`[SALA_DEBUG] ${req.method} ${req.url}`);
-    next();
-});
 
 // --- PRIORITY ROUTES (Livreur) ---
 app.use('/api/livreur/orders', livreurOrdersRoutes);

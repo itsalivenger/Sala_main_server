@@ -36,7 +36,7 @@ export const login = async (req: Request, res: Response) => {
         const otp = generateOTP();
         const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-        let user = await Client.findOne({ phoneNumber });
+        const user = await Client.findOne({ phoneNumber });
 
         if (!user) {
             console.log(`[AUTH] Checking User: ${phoneNumber} -> NOT FOUND in database.`);

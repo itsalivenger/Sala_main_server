@@ -15,7 +15,7 @@ export const getAllComplaints = async (req: Request, res: Response) => {
 
         console.log(`[ADMIN_COMPLAINTS] Found ${clients.length} clients and ${livreurs.length} livreurs (Lean).`);
 
-        let allComplaints: any[] = [];
+        const allComplaints: any[] = [];
 
         clients.forEach((client: any) => {
             if (client.complaints && client.complaints.length > 0) {

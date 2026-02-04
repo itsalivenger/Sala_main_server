@@ -38,7 +38,7 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
         const total = await Order.countDocuments(query);
 
         // Fetch orders with comprehensive data
-        let orders = await Order.find(query)
+        const orders = await Order.find(query)
             .populate('clientId', 'name phoneNumber city')
             .sort({ createdAt: -1 })
             .skip(skip)
