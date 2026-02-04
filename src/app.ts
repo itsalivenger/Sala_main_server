@@ -6,9 +6,6 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import connectDB from './config/db';
 
-// Connect to Database (Initial call for serverless warming)
-connectDB().catch(err => console.error('[DB_INITIAL_CONNECT_ERROR]', err));
-
 // Route Imports
 import newsletterRoutes from './routes/admin/newsletter';
 import adminAccountsRoutes from './routes/admin/admins';
@@ -45,6 +42,23 @@ import livreurPerformanceRoutes from './routes/livreur/performance';
 import livreurUploadRoutes from './routes/livreur/upload';
 
 const app: Application = express();
+
+// Connect to Database (Initial call for serverless warming)
+connectDB().catch(err => console.error('[DB_INITIAL_CONNECT_ERROR]', err));
+
+// DB Connection Guard Middleware (Ensures DB is ready before any route is processed)
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err: any) {
+        console.error('[DB_GUARD_ERROR]', err.message);
+        res.status(503).json({
+            error: 'Service Unavailable',
+            message: 'Database connection is still initializing. Please retry in a few seconds.'
+        });
+    }
+});
 
 // Middleware
 app.use(express.json());

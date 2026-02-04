@@ -25,7 +25,9 @@ async function connectDB() {
     if (!cached.promise) {
         const opts = {
             dbName: DB_NAME,
-            bufferCommands: false, // Recommended for serverless to fail fast
+            bufferCommands: true,
+            connectTimeoutMS: 45000, // Handle slow initial network handshake
+            serverSelectionTimeoutMS: 45000,
         };
 
         cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
