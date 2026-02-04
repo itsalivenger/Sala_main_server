@@ -4,6 +4,10 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import connectDB from './config/db';
+
+// Connect to Database (Initial call for serverless warming)
+connectDB().catch(err => console.error('[DB_INITIAL_CONNECT_ERROR]', err));
 
 // Route Imports
 import newsletterRoutes from './routes/admin/newsletter';

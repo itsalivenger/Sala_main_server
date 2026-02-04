@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import mongoose from 'mongoose';
+import connectDB from './config/db';
 import app from './app';
 
 import { Server } from 'socket.io';
@@ -18,11 +18,8 @@ if (!MONGODB_URI) {
 
 const startServer = async () => {
     try {
+        await connectDB();
         const dbName = process.env.DB_NAME || 'Sala';
-        // Connecting to MongoDB
-        await mongoose.connect(MONGODB_URI, {
-            dbName: dbName
-        });
         console.log(`✅ Connected to MongoDB (Database: ${dbName})`);
 
         // Start Background Jobs
