@@ -75,7 +75,7 @@ const allowedOrigins = [
     'https://sala-site-xi.vercel.app'
 ];
 if (process.env.ALLOWED_ORIGINS) {
-    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
+    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim()));
 }
 
 app.use(cors({
