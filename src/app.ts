@@ -23,6 +23,7 @@ import cmsRoutes from './routes/admin/cms';
 import dashboardRoutes from './routes/admin/dashboard';
 import faqRoutes from './routes/admin/faq';
 import enquiryRoutes from './routes/enquiry';
+import vehicleModelRoutes from './routes/admin/vehicleModels';
 
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
@@ -123,6 +124,7 @@ app.use('/api/admin/upload', uploadRoutes);
 app.use('/api/admin/cms', cmsRoutes);
 app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/admin/faq', faqRoutes);
+app.use('/api/admin/vehicle-models', vehicleModelRoutes);
 app.use('/api/enquiries', enquiryRoutes);
 
 // --- CLIENT ROUTES ---

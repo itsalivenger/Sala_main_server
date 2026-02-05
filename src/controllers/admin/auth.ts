@@ -46,8 +46,8 @@ export const login = async (req: Request, res: Response) => {
         const isProduction = process.env.NODE_ENV === 'production';
         res.cookie('admin_token', token, {
             httpOnly: true,
-            secure: isProduction, // Only secure in production (HTTPS)
-            sameSite: isProduction ? 'none' : 'lax', // Use 'none' for cross-domain prod, 'lax' for local dev
+            secure: isProduction, // Still secure (HTTPS) in production
+            sameSite: 'lax', // Now possible thanks to Next.js proxy/rewrites
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
             path: '/'
         });
