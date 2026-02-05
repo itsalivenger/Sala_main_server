@@ -85,7 +85,6 @@ export const login = async (req: Request, res: Response) => {
 export const verifyOtp = async (req: Request, res: Response) => {
     try {
         const { phoneNumber, code } = req.body;
-        console.log(`[AUTH] Verify OTP Request: Phone=${phoneNumber}, Code=${code}`);
 
         if (!phoneNumber || !code) {
             console.warn('[AUTH] Verify OTP Failed: Missing phone or code');
@@ -118,7 +117,6 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
         // Generate JWT
         const secret = process.env.JWT_SECRET || 'secret';
-        console.log(`[AUTH] Signing token with secret: ${secret.substring(0, 2)}...${secret.substring(secret.length - 2)} (Length: ${secret.length})`);
         const token = jwt.sign(
             { id: user._id, role: 'user' },
             secret,

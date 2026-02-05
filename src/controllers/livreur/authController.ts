@@ -77,7 +77,6 @@ export const login = async (req: Request, res: Response) => {
 export const verifyOtp = async (req: Request, res: Response) => {
     try {
         const { phoneNumber, code } = req.body;
-        console.log(`[LIVREUR AUTH] Verify OTP Request: Phone=${phoneNumber}, Code=${code}`);
 
         if (!phoneNumber || !code) {
             console.warn('[LIVREUR AUTH] Verify OTP Failed: Missing phone or code');
