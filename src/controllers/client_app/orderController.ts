@@ -99,6 +99,13 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     // Formula: First SSU = base_delivery_fee, Subsequent SSUs = base_delivery_fee * pricing_multiplier
     const deliveryFee = base_delivery_fee + (ssuCount - 1) * (base_delivery_fee * pricing_multiplier);
 
+    // Calculate Distance if locations are provided
+    let distance = 0;
+    if (pickup && dropoff && pickup.lat && pickup.lng && dropoff.lat && dropoff.lng) {
+        const route = await getRoadDistance(pickup, dropoff);
+        distance = route.distance / 1000; // Convert to KM
+    }
+
     const total = subtotal + deliveryFee;
 
     // Calculate Distance (Haversine for pricing/info)
@@ -120,6 +127,7 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         ssuCount,
         distance: parseFloat(distance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
+        distance: parseFloat(distance.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         requiredVehicle,
         minOrderValue: settings.client.min_order_value,
