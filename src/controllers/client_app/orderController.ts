@@ -55,7 +55,7 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
 };
 
 /**
- * Helper to calculate order pricing
+ * Helper to calculate order pricing using Multi-SALA (SSU) logic
  */
 export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?: any) => {
     const settings = await PlatformSettings.findOne();
@@ -63,17 +63,8 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         throw new Error('Platform configuration missing. Please setup PlatformSettings in the database.');
     }
 
-    const l = settings.livreur || {
-        vehicle_limits: {
-            bike: {},
-            car: {},
-            truck: {}
-        }
-    };
-    const cSettings = settings.client || {};
-
-    const marginPercent = (settings.platform_margin_percentage || 0) / 100;
-    const taxRate = (settings.tax_percentage ?? 0) / 100;
+    const { logistics } = settings;
+    const { ssu_max_weight, ssu_max_volume, ssu_pricing_multiplier, base_delivery_fee } = logistics;
 
     let subtotal = 0;
     let totalWeight = 0;
@@ -97,87 +88,42 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         }
     });
 
-    // Determine Vehicle Type (for base price logic)
-    // Uses the strict limits defined in vehicle_limits
-    let vehicleType: 'bike' | 'car' | 'truck' = 'bike';
+    // Calculate SSU Count (Standard Shipping Units)
+    const ssuWeightCount = Math.ceil(totalWeight / ssu_max_weight);
+    const ssuVolumeCount = Math.ceil(totalVolume / ssu_max_volume);
+    const ssuCount = Math.max(1, ssuWeightCount, ssuVolumeCount);
 
-    // Check if Truck is needed (Exceeds Car limits)
-    if (totalWeight > l.vehicle_limits.car.max_weight || totalVolume > l.vehicle_limits.car.max_volume) {
-        vehicleType = 'truck';
-    }
-    // Check if Car is needed (Exceeds Bike limits)
-    else if (totalWeight > l.vehicle_limits.bike.max_weight || totalVolume > l.vehicle_limits.bike.max_volume) {
-        vehicleType = 'car';
-    }
-    // Default is bike if within limits
+    // Calculate Delivery Fee (Base fee + Multiplier for extra SSUs)
+    // Formula: First SSU = base_delivery_fee, Subsequent SSUs = base_delivery_fee * ssu_pricing_multiplier
+    const deliveryFee = base_delivery_fee + (ssuCount - 1) * (base_delivery_fee * ssu_pricing_multiplier);
 
-    // Determine Required Vehicle (for UI metadata)
+    const total = subtotal + deliveryFee;
+
+    // Determine Required Vehicle (For internal tracking, though simplified)
+    // Typically SSU logic assumes multiple SSUs might require a larger vehicle or multiple trips
     let requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto';
-    let vehicleTypeLabel = 'Livraison Standard (Moto)';
-    let vehicleIcon = 'motorbike';
+    if (ssuCount > 2) requiredVehicle = 'large_car';
+    else if (ssuCount > 1) requiredVehicle = 'small_car';
 
-    if (vehicleType === 'truck') {
-        requiredVehicle = 'large_car';
-        vehicleTypeLabel = 'Livraison Grand Volume (Camion)';
-        vehicleIcon = 'truck';
-    } else if (vehicleType === 'car') {
-        requiredVehicle = 'small_car';
-        vehicleTypeLabel = 'Livraison Volumineuse (Voiture)';
-        vehicleIcon = 'car';
-    }
-
-    // Use vehicle-specific pricing from documentation
-    const vehicleSettings = l.vehicle_limits[vehicleType];
-    console.log(`[DEBUG_PRICING] Vehicle: ${vehicleType}, Settings:`, vehicleSettings);
-
-    const baseFee = vehicleSettings.base_price; // Removed fallback
-    const pricePerKm = vehicleSettings.price_per_km; // Removed fallback
-    const feePerKg = vehicleSettings.price_per_weight; // Removed fallback
-
-    let distance = 0;
-    if (pickup && dropoff) {
-        const route = await getRoadDistance(pickup, dropoff);
-        if (route.distance > 0) {
-            distance = route.distance / 1000; // meters to KM
-        } else {
-            distance = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
-        }
-    }
-
-    const distanceFee = distance * (pricePerKm || 0);
-    const weightFee = totalWeight * (feePerKg || 0);
-    const deliveryFee = (baseFee || 0) + distanceFee + weightFee;
-
-    const platformMargin = subtotal * marginPercent;
-    const tax = (subtotal + deliveryFee) * taxRate;
-    const total = subtotal + deliveryFee + platformMargin + tax;
-
-    // Return everything in DH (Floats)
     return {
         subtotal: parseFloat(subtotal.toFixed(2)),
         totalWeight: parseFloat(totalWeight.toFixed(2)),
         totalVolume: parseFloat(totalVolume.toFixed(6)),
-        vehicleType,
-        requiredVehicle,
-        vehicleTypeLabel,
-        vehicleIcon,
-        distance: parseFloat(distance.toFixed(2)),
+        ssuCount,
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
-        platformMargin: parseFloat(platformMargin.toFixed(2)),
-        livreurNet: parseFloat(deliveryFee.toFixed(2)),
-        tax: parseFloat(tax.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
-        discount: 0,
-        minOrderValue: cSettings.min_order_value,
-        freeDeliveryThreshold: cSettings.free_delivery_threshold,
-        dbTaxRate: settings.tax_percentage,
-        dbMarginRate: settings.platform_margin_percentage,
-        // Detailed rates for debug/UI - NO FALLBACKS RETURNED
-        appliedBasePrice: baseFee,
-        appliedPricePerKm: pricePerKm,
-        appliedPricePerKg: feePerKg,
-        appliedDistanceFee: parseFloat(distanceFee.toFixed(2)),
-        appliedWeightFee: parseFloat(weightFee.toFixed(2))
+        requiredVehicle,
+        minOrderValue: settings.client.min_order_value,
+        freeDeliveryThreshold: settings.client.free_delivery_threshold,
+        // Hidden fields for developer debugging in the checkout screen modal
+        _debug: {
+            weightSSUs: ssuWeightCount,
+            volumeSSUs: ssuVolumeCount,
+            multiplierUsed: ssu_pricing_multiplier,
+            baseFeeUsed: base_delivery_fee,
+            maxWeightLimit: ssu_max_weight,
+            maxVolumeLimit: ssu_max_volume
+        }
     };
 };
 
@@ -228,10 +174,11 @@ export const createOrder = async (req: Request, res: Response) => {
         const pricing = await calculateOrderPricing(enrichedItems, pickupLocation, dropoffLocation);
 
         // Enforce Minimum Order Value
-        if (pricing.subtotal < pricing.minOrderValue) {
+        if (pricing.subtotal < (pricing.minOrderValue || 0)) {
+            const minVal = pricing.minOrderValue || 0;
             return res.status(400).json({
                 success: false,
-                message: `Le montant minimum de la commande est de ${pricing.minOrderValue} DH (votre panier est de ${pricing.subtotal} DH)`
+                message: `Le montant minimum de la commande est de ${minVal} DH (votre panier est de ${pricing.subtotal} DH)`
             });
         }
 
@@ -240,13 +187,15 @@ export const createOrder = async (req: Request, res: Response) => {
             items: enrichedItems,
             totalWeight: pricing.totalWeight,
             totalVolume: pricing.totalVolume,
+            ssuCount: pricing.ssuCount,
             requiredVehicle: pricing.requiredVehicle,
-            vehicleTypeLabel: pricing.vehicleTypeLabel,
-            vehicleIcon: pricing.vehicleIcon,
-            distance: pricing.distance,
+            distance: pricing.distance || 0,
             pickupLocation,
             dropoffLocation,
-            pricing,
+            pricing: {
+                ...pricing,
+                livreurNet: pricing.deliveryFee // In SSU logic, delivery fee goes to driver for now
+            },
             paymentMethod: paymentMethod || 'Cash',
             paymentStatus: paymentMethod === 'Card' ? 'Authorized' : 'Pending',
             status: 'SEARCHING_FOR_LIVREUR',
@@ -262,7 +211,7 @@ export const createOrder = async (req: Request, res: Response) => {
                 note: 'Recherche d\'un livreur à proximité...'
             }],
             expansionStage: 0,
-            eligibleLivreurs: [] // Placeholder, will set below
+            eligibleLivreurs: []
         });
 
         // Find 3 closest online and available drivers

@@ -22,6 +22,7 @@ export interface IOrder extends Document {
     vehicleTypeLabel: string;
     vehicleIcon: string;
     distance?: number; // Distance in KM
+    ssuCount: number; // Number of Standard Shipping Units
 
     // Locations
     pickupLocation?: {
@@ -160,6 +161,7 @@ const OrderSchema: Schema = new Schema(
         vehicleTypeLabel: { type: String, default: 'Format Léger' },
         vehicleIcon: { type: String, default: 'bicycle-outline' },
         distance: { type: Number, default: 0 },
+        ssuCount: { type: Number, default: 1 },
 
         pickupLocation: {
             address: String,

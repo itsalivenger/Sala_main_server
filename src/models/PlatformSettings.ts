@@ -15,6 +15,12 @@ export interface IPlatformSettings extends Document {
         };
         max_active_orders: number;
     };
+    logistics: {
+        ssu_max_weight: number;             // e.g., 5kg
+        ssu_max_volume: number;             // e.g., 0.03 m3 (30L)
+        ssu_pricing_multiplier: number;     // e.g., 1.0 (100% per extra unit)
+        base_delivery_fee: number;          // e.g., 15 DH
+    };
     client: {
         min_order_value: number;            // e.g., 50.00 DH
         first_order_discount: number;       // e.g., 10.00 DH
@@ -65,6 +71,12 @@ const PlatformSettingsSchema: Schema = new Schema(
                 }
             },
             max_active_orders: { type: Number, default: 3 }
+        },
+        logistics: {
+            ssu_max_weight: { type: Number, default: 5 },
+            ssu_max_volume: { type: Number, default: 0.03 },
+            ssu_pricing_multiplier: { type: Number, default: 1.0 },
+            base_delivery_fee: { type: Number, default: 15 }
         },
         client: {
             min_order_value: { type: Number, default: 50 },
