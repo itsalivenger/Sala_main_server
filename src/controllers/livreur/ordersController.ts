@@ -175,7 +175,14 @@ export const acceptOrder = async (req: Request, res: Response) => {
         }
 
         // --- ENFORCE VEHICLE COMPATIBILITY ---
-        const vehicleRank = { 'moto': 1, 'small_car': 2, 'large_car': 3 };
+        // Handle both Livreur types (petite_vehicule, grande_vehicule) and Order types (small_car, large_car)
+        const vehicleRank: Record<string, number> = {
+            'moto': 1,
+            'petite_vehicule': 2,
+            'grande_vehicule': 3,
+            'small_car': 2,
+            'large_car': 3
+        };
         const livreurRank = vehicleRank[livreur.vehicle?.type || 'moto'] || 1;
         const requiredRank = vehicleRank[order.requiredVehicle || 'moto'] || 1;
 
