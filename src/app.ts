@@ -76,7 +76,7 @@ const allowedOrigins = [
     'https://sala-site-xi.vercel.app'
 ];
 if (process.env.ALLOWED_ORIGINS) {
-    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
+    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim()));
 }
 
 app.use(cors({
@@ -137,7 +137,7 @@ app.use('/api/client/settings', clientSettingsRoutes);
 app.use('/api/client/notifications', clientNotificationRoutes);
 
 // --- STATIC ASSETS ---
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+// Note: Handled by Cloudinary. Font files are in public root if needed via path.join.
 
 // --- HEALTH CHECK ---
 app.get('/', (req: Request, res: Response) => {
