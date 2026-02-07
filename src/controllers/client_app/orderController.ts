@@ -64,7 +64,7 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     }
 
     const { logistics } = settings;
-    const { ssu_max_weight, ssu_max_volume, ssu_pricing_multiplier, base_delivery_fee } = logistics;
+    const { max_weight_per_unit, max_volume_per_unit, pricing_multiplier, base_delivery_fee } = logistics;
 
     let subtotal = 0;
     let totalWeight = 0;
@@ -89,15 +89,23 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     });
 
     // Calculate SSU Count (Standard Shipping Units)
-    const ssuWeightCount = Math.ceil(totalWeight / ssu_max_weight);
-    const ssuVolumeCount = Math.ceil(totalVolume / ssu_max_volume);
+    const ssuWeightCount = Math.ceil(totalWeight / max_weight_per_unit);
+    // Convert liters limit to m3 (1000L = 1m3)
+    const maxVolumeM3 = max_volume_per_unit / 1000;
+    const ssuVolumeCount = Math.ceil(totalVolume / maxVolumeM3);
     const ssuCount = Math.max(1, ssuWeightCount, ssuVolumeCount);
 
     // Calculate Delivery Fee (Base fee + Multiplier for extra SSUs)
-    // Formula: First SSU = base_delivery_fee, Subsequent SSUs = base_delivery_fee * ssu_pricing_multiplier
-    const deliveryFee = base_delivery_fee + (ssuCount - 1) * (base_delivery_fee * ssu_pricing_multiplier);
+    // Formula: First SSU = base_delivery_fee, Subsequent SSUs = base_delivery_fee * pricing_multiplier
+    const deliveryFee = base_delivery_fee + (ssuCount - 1) * (base_delivery_fee * pricing_multiplier);
 
     const total = subtotal + deliveryFee;
+
+    // Calculate Distance (Haversine for pricing/info)
+    let distance = 0;
+    if (pickup?.lat && pickup?.lng && dropoff?.lat && dropoff?.lng) {
+        distance = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+    }
 
     // Determine Required Vehicle (For internal tracking, though simplified)
     // Typically SSU logic assumes multiple SSUs might require a larger vehicle or multiple trips
@@ -110,6 +118,7 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         totalWeight: parseFloat(totalWeight.toFixed(2)),
         totalVolume: parseFloat(totalVolume.toFixed(6)),
         ssuCount,
+        distance: parseFloat(distance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         requiredVehicle,
@@ -119,10 +128,10 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         _debug: {
             weightSSUs: ssuWeightCount,
             volumeSSUs: ssuVolumeCount,
-            multiplierUsed: ssu_pricing_multiplier,
+            multiplierUsed: pricing_multiplier,
             baseFeeUsed: base_delivery_fee,
-            maxWeightLimit: ssu_max_weight,
-            maxVolumeLimit: ssu_max_volume
+            maxWeightLimit: max_weight_per_unit,
+            maxVolumeLimit: max_volume_per_unit
         }
     };
 };

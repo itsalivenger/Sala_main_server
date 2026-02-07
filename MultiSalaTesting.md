@@ -2,25 +2,25 @@
 
 This document explains the new "Standard Shipping Unit" (SSU) logic for Sala, which simplifies delivery pricing and efforts for both the platform and the Livreurs.
 
-## 1. What is an SSU?
-An **SSU (Standard Shipping Unit)** is a logical container that represents a manageable delivery load for a single vehicle (usually a bike).
+## 1. What is an Logistics Unit?
+An **Logistics Unit** is a logical container that represents a manageable delivery load for a single vehicle (usually a bike).
 
-Instead of guessing vehicle types, the system now splits an order into multiple SSUs if it exceeds:
-- **Max Weight**: ~5kg (Adjustable in Admin)
-- **Max Volume**: ~0.03 m³ (30L) (Adjustable in Admin)
+Instead of guessing vehicle types, the system now splits an order into multiple units if it exceeds:
+- **Max Weight**: ~5kg (`max_weight_per_unit`)
+- **Max Volume**: ~0.03 m³ (30L) (`max_volume_per_unit`)
 
 ## 2. Calculation Logic
 When a client creates an order:
 1. The total weight and total volume of all items are calculated.
-2. The system determines how many SSUs are needed:
-   - `ssuWeight = totalWeight / ssu_max_weight`
-   - `ssuVolume = totalVolume / ssu_max_volume`
-   - `ssuCount = max(1, ssuWeight, ssuVolume)`
+2. The system determines how many units are needed:
+   - `weightUnits = totalWeight / max_weight_per_unit`
+   - `volumeUnits = totalVolume / max_volume_per_unit`
+   - `unitCount = max(1, weightUnits, volumeUnits)`
 
 ## 3. Livreur Payment & Effort
-- **1 SSU**: Standard delivery effort.
-- **2 SSUs**: Equivalent to carrying two full bags. The delivery fee is increased based on a multiplier (e.g., 1.5x or 2x the base fee).
-- **LivreurNet**: The entire delivery fee (calculated per SSU) is currently passed to the Livreur.
+- **1 Unit**: Standard delivery effort.
+- **2 Units**: Equivalent to carrying two full bags. The delivery fee is increased based on a multiplier (`pricing_multiplier`).
+- **LivreurNet**: The entire delivery fee (calculated per unit) is currently passed to the Livreur.
 
 ## 4. Testing for Livreurs
 - Large orders (e.g., 20kg of flour) will now show as `ssuCount: 4`.

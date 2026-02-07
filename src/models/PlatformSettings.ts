@@ -16,10 +16,10 @@ export interface IPlatformSettings extends Document {
         max_active_orders: number;
     };
     logistics: {
-        ssu_max_weight: number;             // e.g., 5kg
-        ssu_max_volume: number;             // e.g., 0.03 m3 (30L)
-        ssu_pricing_multiplier: number;     // e.g., 1.0 (100% per extra unit)
-        base_delivery_fee: number;          // e.g., 15 DH
+        max_weight_per_unit: number;    // e.g., 5 kg
+        max_volume_per_unit: number;    // e.g., 0.03 m3 (30 liters)
+        pricing_multiplier: number;     // e.g., 1 or 1.5 for second unit
+        base_delivery_fee: number;      // e.g., 15 DH
     };
     client: {
         min_order_value: number;            // e.g., 50.00 DH
@@ -30,11 +30,6 @@ export interface IPlatformSettings extends Document {
         max_order_volume: number;           // e.g., 0.3 m3
     };
     max_categories: number;
-    logistics: {
-        max_weight_per_unit: number;    // e.g., 5 kg
-        max_volume_per_unit: number;    // e.g., 30 liters
-        pricing_multiplier: number;     // e.g., 1 or 1.5 for second unit
-    };
     updatedAt: Date;
 }
 
@@ -73,9 +68,9 @@ const PlatformSettingsSchema: Schema = new Schema(
             max_active_orders: { type: Number, default: 3 }
         },
         logistics: {
-            ssu_max_weight: { type: Number, default: 5 },
-            ssu_max_volume: { type: Number, default: 0.03 },
-            ssu_pricing_multiplier: { type: Number, default: 1.0 },
+            max_weight_per_unit: { type: Number, default: 5 },
+            max_volume_per_unit: { type: Number, default: 0.03 }, // in m3 (30L)
+            pricing_multiplier: { type: Number, default: 1.0 },
             base_delivery_fee: { type: Number, default: 15 }
         },
         client: {
@@ -86,12 +81,7 @@ const PlatformSettingsSchema: Schema = new Schema(
             free_delivery_threshold: { type: Number, default: 200 },
             max_order_volume: { type: Number, default: 0.3 }
         },
-        max_categories: { type: Number, default: 20 },
-        logistics: {
-            max_weight_per_unit: { type: Number, default: 5 },
-            max_volume_per_unit: { type: Number, default: 30 },
-            pricing_multiplier: { type: Number, default: 1 }
-        }
+        max_categories: { type: Number, default: 20 }
     },
     {
         timestamps: { createdAt: false, updatedAt: true },
