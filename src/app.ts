@@ -23,6 +23,7 @@ import cmsRoutes from './routes/admin/cms';
 import dashboardRoutes from './routes/admin/dashboard';
 import faqRoutes from './routes/admin/faq';
 import enquiryRoutes from './routes/enquiry';
+import vehicleModelRoutes from './routes/admin/vehicleModels';
 
 // Client App Routes
 import clientAuthRoutes from './routes/client_app/auth';
@@ -75,7 +76,7 @@ const allowedOrigins = [
     'https://sala-site-xi.vercel.app'
 ];
 if (process.env.ALLOWED_ORIGINS) {
-    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
+    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim()));
 }
 
 app.use(cors({
@@ -123,6 +124,7 @@ app.use('/api/admin/upload', uploadRoutes);
 app.use('/api/admin/cms', cmsRoutes);
 app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/admin/faq', faqRoutes);
+app.use('/api/admin/vehicle-models', vehicleModelRoutes);
 app.use('/api/enquiries', enquiryRoutes);
 
 // --- CLIENT ROUTES ---
@@ -135,7 +137,7 @@ app.use('/api/client/settings', clientSettingsRoutes);
 app.use('/api/client/notifications', clientNotificationRoutes);
 
 // --- STATIC ASSETS ---
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+// Note: Handled by Cloudinary. Font files are in public root if needed via path.join.
 
 // --- HEALTH CHECK ---
 app.get('/', (req: Request, res: Response) => {

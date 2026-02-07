@@ -53,7 +53,8 @@ export const uploadFile = (req: Request, res: Response) => {
 
         const uploadedFiles = files.map(file => {
             // multer-storage-cloudinary provides the secure_url or path in the file object
-            const fileUrl = (file as any).path || (file as any).secure_url;
+            // We prioritize secure_url to ensure https
+            const fileUrl = (file as any).secure_url || (file as any).path;
             return {
                 url: fileUrl,
                 filename: file.filename,

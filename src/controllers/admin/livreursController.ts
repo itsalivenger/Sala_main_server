@@ -301,7 +301,7 @@ export const updateLivreurKYC = async (req: Request, res: Response) => {
         const { id } = req.params;
         const { status, reason } = req.body;
 
-        if (!['Approved', 'Suspended', 'Pending'].includes(status)) {
+        if (!['Approved', 'Active', 'Suspended', 'Pending'].includes(status)) {
             return res.status(400).json({ success: false, message: 'Statut invalide.' });
         }
 

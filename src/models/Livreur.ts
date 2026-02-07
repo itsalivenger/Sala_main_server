@@ -37,7 +37,7 @@ export interface ILivreur extends Document {
 
     // Vehicle information
     vehicle: {
-        type: 'moto' | 'small_car' | 'large_car';
+        type: 'moto' | 'petite_vehicule' | 'grande_vehicule';
         model: string;
         plateNumber: string;
     };
@@ -191,7 +191,7 @@ const LivreurSchema: Schema = new Schema(
         vehicle: {
             type: {
                 type: String,
-                enum: ['moto', 'small_car', 'large_car'],
+                enum: ['moto', 'petite_vehicule', 'grande_vehicule'],
             },
             model: String,
             plateNumber: String,
