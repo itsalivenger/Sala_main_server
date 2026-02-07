@@ -99,23 +99,21 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     // Formula: First SSU = base_delivery_fee, Subsequent SSUs = base_delivery_fee * pricing_multiplier
     const deliveryFee = base_delivery_fee + (ssuCount - 1) * (base_delivery_fee * pricing_multiplier);
 
-    // Calculate Distance if locations are provided
+    // Calculate Distance (Road distance with Haversine fallback)
     let distance = 0;
-    if (pickup && dropoff && pickup.lat && pickup.lng && dropoff.lat && dropoff.lng) {
-        const route = await getRoadDistance(pickup, dropoff);
-        distance = route.distance / 1000; // Convert to KM
+    if (pickup?.lat && pickup?.lng && dropoff?.lat && dropoff?.lng) {
+        try {
+            const route = await getRoadDistance(pickup, dropoff);
+            distance = route.distance / 1000; // Convert meters to KM
+        } catch (err) {
+            // Fallback to Haversine if road distance service fails
+            distance = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+        }
     }
 
     const total = subtotal + deliveryFee;
 
-    // Calculate Distance (Haversine for pricing/info)
-    let distance = 0;
-    if (pickup?.lat && pickup?.lng && dropoff?.lat && dropoff?.lng) {
-        distance = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
-    }
-
     // Determine Required Vehicle (For internal tracking, though simplified)
-    // Typically SSU logic assumes multiple SSUs might require a larger vehicle or multiple trips
     let requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto';
     if (ssuCount > 2) requiredVehicle = 'large_car';
     else if (ssuCount > 1) requiredVehicle = 'small_car';
@@ -127,7 +125,6 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         ssuCount,
         distance: parseFloat(distance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
-        distance: parseFloat(distance.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         requiredVehicle,
         minOrderValue: settings.client.min_order_value,
