@@ -24,6 +24,11 @@ export interface IPlatformSettings extends Document {
         max_order_volume: number;           // e.g., 0.3 m3
     };
     max_categories: number;
+    logistics: {
+        max_weight_per_unit: number;    // e.g., 5 kg
+        max_volume_per_unit: number;    // e.g., 30 liters
+        pricing_multiplier: number;     // e.g., 1 or 1.5 for second unit
+    };
     updatedAt: Date;
 }
 
@@ -69,7 +74,12 @@ const PlatformSettingsSchema: Schema = new Schema(
             free_delivery_threshold: { type: Number, default: 200 },
             max_order_volume: { type: Number, default: 0.3 }
         },
-        max_categories: { type: Number, default: 20 }
+        max_categories: { type: Number, default: 20 },
+        logistics: {
+            max_weight_per_unit: { type: Number, default: 5 },
+            max_volume_per_unit: { type: Number, default: 30 },
+            pricing_multiplier: { type: Number, default: 1 }
+        }
     },
     {
         timestamps: { createdAt: false, updatedAt: true },
