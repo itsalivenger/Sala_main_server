@@ -61,6 +61,10 @@ app.use(async (_req: Request, res: Response, next: NextFunction) => {
 });
 
 // Middleware
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.url} - Origin: ${req.get('origin') || 'N/A'}`);
+    next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

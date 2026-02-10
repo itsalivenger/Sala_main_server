@@ -58,10 +58,13 @@ export const login = async (req: Request, res: Response) => {
         // Send OTP via SMS (Twilio or mock)
         await smsService.sendOTP(phoneNumber, otp, 'Livreur Login');
 
+        const isDev = process.env.NODE_ENV?.trim().toLowerCase() === 'development';
+        console.log(`[LIVREUR AUTH] OTP Generated: ${otp} (NODE_ENV: ${process.env.NODE_ENV}, isDev: ${isDev})`);
+
         res.status(200).json({
             success: true,
             message: 'Code de vérification envoyé',
-            ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+            ...(isDev && { dev_otp: otp })
         });
     } catch (error) {
         console.error('Livreur Login error:', error);
@@ -197,10 +200,13 @@ export const register = async (req: Request, res: Response) => {
         // Send OTP via SMS (Twilio or mock)
         await smsService.sendOTP(phoneNumber, otp, 'Livreur Registration');
 
+        const isDev = process.env.NODE_ENV?.trim().toLowerCase() === 'development';
+        console.log(`[LIVREUR AUTH] Register OTP Generated: ${otp} (NODE_ENV: ${process.env.NODE_ENV}, isDev: ${isDev})`);
+
         res.status(200).json({
             success: true,
             message: 'Code d\'inscription envoyé',
-            ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+            ...(isDev && { dev_otp: otp })
         });
     } catch (error) {
         console.error('Livreur Register error:', error);
