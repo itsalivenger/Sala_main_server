@@ -64,11 +64,20 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     }
 
     const { logistics } = settings;
-    const { max_weight_per_unit, max_volume_per_unit, pricing_multiplier, base_delivery_fee } = logistics;
+    const {
+        max_weight_per_unit,
+        max_volume_per_unit,
+        pricing_multiplier,
+        base_delivery_fee,
+        price_per_km = 0,
+        grace_margin_percentage = 0.05
+    } = settings.logistics;
 
     let subtotal = 0;
     let totalWeight = 0;
     let totalVolume = 0; // In m3
+
+    console.log(`[PRICING] DEBUG: Settings - MaxW: ${max_weight_per_unit}kg, MaxV: ${max_volume_per_unit}m3, Base: ${base_delivery_fee}DH, KmRate: ${price_per_km}DH, Grace: ${grace_margin_percentage * 100}%`);
 
     // Fetch products to ensure we have dimensions if not provided
     const productIds = items.map(i => i._id);
@@ -88,31 +97,47 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         if (dimensions) {
             const itemVol = (dimensions.length * dimensions.width * dimensions.height) / 1000000;
             totalVolume += itemVol * item.quantity;
+            console.log(`[PRICING] Item: ${item.name || item._id}, Qty: ${item.quantity}, Weight: ${weight}kg, Vol(1unit): ${itemVol.toFixed(6)}m3, TotalVol: ${(itemVol * item.quantity).toFixed(6)}m3`);
+        } else {
+            console.log(`[PRICING] Item: ${item.name || item._id}, Qty: ${item.quantity}, Weight: ${weight}kg, Vol: N/A (No dimensions)`);
         }
     });
 
-    // Calculate SSU Count (Standard Shipping Units)
-    const ssuWeightCount = Math.ceil(totalWeight / max_weight_per_unit);
-    // Convert liters limit to m3 (1000L = 1m3)
-    const maxVolumeM3 = max_volume_per_unit / 1000;
-    const ssuVolumeCount = Math.ceil(totalVolume / maxVolumeM3);
-    const ssuCount = Math.max(1, ssuWeightCount, ssuVolumeCount);
-
-    // Calculate Delivery Fee (Base fee + Multiplier for extra SSUs)
-    // Formula: First SSU = base_delivery_fee, Subsequent SSUs = base_delivery_fee * pricing_multiplier
-    const deliveryFee = base_delivery_fee + (ssuCount - 1) * (base_delivery_fee * pricing_multiplier);
-
     // Calculate Distance (Road distance with Haversine fallback)
-    let distance = 0;
-    if (pickup?.lat && pickup?.lng && dropoff?.lat && dropoff?.lng) {
+    let roadDistanceKm = dropoff?.distance || 0; // Use provided distance if available
+    if (roadDistanceKm === 0 && pickup?.lat && pickup?.lng && dropoff?.lat && dropoff?.lng) {
         try {
             const route = await getRoadDistance(pickup, dropoff);
-            distance = route.distance / 1000; // Convert meters to KM
+            roadDistanceKm = route.distance / 1000; // Convert meters to KM
         } catch (err) {
             // Fallback to Haversine if road distance service fails
-            distance = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
+            roadDistanceKm = getHaversineDistance(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
         }
     }
+    const finalDistance = roadDistanceKm || 1.0; // Fallback to 1km minimum for pricing
+
+    // Calculate SSU Count (Standard Shipping Units) with Grace Margin
+    // If client is 5% over the limit, we don't jump to the next unit yet.
+    const weightThreshold = max_weight_per_unit * (1 + grace_margin_percentage);
+    const ssuWeightCount = totalWeight <= weightThreshold ? 1 : Math.ceil(totalWeight / max_weight_per_unit);
+
+    // max_volume_per_unit is already in m3 in PlatformSettings (default 0.03)
+    // If it's > 1, assume it was entered in Liters and convert to m3
+    const maxVolumeM3 = max_volume_per_unit > 1 ? max_volume_per_unit / 1000 : max_volume_per_unit;
+    const volumeThreshold = maxVolumeM3 * (1 + grace_margin_percentage);
+    const ssuVolumeCount = totalVolume <= volumeThreshold ? 1 : Math.ceil(totalVolume / maxVolumeM3);
+
+    const ssuCount = Math.max(1, ssuWeightCount, ssuVolumeCount);
+
+    // Calculate Distance Fee (Base + Distance * KmRate)
+    const baseWithDistance = base_delivery_fee + (finalDistance * price_per_km);
+
+    console.log(`[PRICING] CALCUL: Weight: ${totalWeight.toFixed(2)}kg (Limit: ${max_weight_per_unit}, Threshold: ${weightThreshold.toFixed(2)})`);
+    console.log(`[PRICING] DISTANCE: ${finalDistance.toFixed(2)}km -> BaseFee(Distance): ${baseWithDistance.toFixed(2)}DH`);
+    console.log(`[PRICING] UNITS: weightUnits: ${ssuWeightCount}, volumeUnits: ${ssuVolumeCount} -> Final SSU: ${ssuCount}`);
+
+    // Calculate Delivery Fee: DistanceBase + Subsequent SSUs
+    const deliveryFee = baseWithDistance + (ssuCount - 1) * (base_delivery_fee * pricing_multiplier);
 
     const total = subtotal + deliveryFee;
 
@@ -126,7 +151,7 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         totalWeight: parseFloat(totalWeight.toFixed(2)),
         totalVolume: parseFloat(totalVolume.toFixed(6)),
         ssuCount,
-        distance: parseFloat(distance.toFixed(2)),
+        distance: parseFloat(finalDistance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         requiredVehicle,
@@ -139,7 +164,11 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
             multiplierUsed: pricing_multiplier,
             baseFeeUsed: base_delivery_fee,
             maxWeightLimit: max_weight_per_unit,
-            maxVolumeLimit: max_volume_per_unit
+            maxVolumeLimit: max_volume_per_unit,
+            pricePerKm: price_per_km,
+            graceMargin: grace_margin_percentage,
+            distanceCalculated: finalDistance,
+            baseWithDistanceFee: baseWithDistance
         }
     };
 };
@@ -219,6 +248,7 @@ export const createOrder = async (req: Request, res: Response) => {
             },
             paymentMethod: paymentMethod || 'Cash',
             paymentStatus: paymentMethod === 'Card' ? 'Authorized' : 'Pending',
+            _debug: pricing._debug,
             status: 'SEARCHING_FOR_LIVREUR',
             timeline: [{
                 status: 'PAID',

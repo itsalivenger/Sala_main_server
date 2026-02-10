@@ -69,7 +69,7 @@ export const login = async (req: Request, res: Response) => {
         res.status(200).json({
             success: true,
             message: 'Code de vérification envoyé',
-            ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+            dev_otp: otp
         });
     } catch (error) {
         console.error('Login error:', error);
@@ -205,7 +205,7 @@ export const register = async (req: Request, res: Response) => {
         res.status(200).json({
             success: true,
             message: 'Code d\'inscription envoyé',
-            ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+            dev_otp: otp
         });
     } catch (error) {
         console.error('Register error:', error);
@@ -314,7 +314,7 @@ export const requestPhoneChange = async (req: Request, res: Response) => {
         res.status(200).json({
             success: true,
             message: 'Code de vérification envoyé au nouveau numéro',
-            ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+            dev_otp: otp
         });
     } catch (error) {
         console.error('Request phone change error:', error);

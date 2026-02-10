@@ -20,6 +20,8 @@ export interface IPlatformSettings extends Document {
         max_volume_per_unit: number;    // e.g., 0.03 m3 (30 liters)
         pricing_multiplier: number;     // e.g., 1 or 1.5 for second unit
         base_delivery_fee: number;      // e.g., 15 DH
+        price_per_km: number;           // e.g., 2 DH/km
+        grace_margin_percentage: number; // e.g., 0.05 for 5%
     };
     client: {
         min_order_value: number;            // e.g., 50.00 DH
@@ -71,7 +73,9 @@ const PlatformSettingsSchema: Schema = new Schema(
             max_weight_per_unit: { type: Number, default: 5 },
             max_volume_per_unit: { type: Number, default: 0.03 }, // in m3 (30L)
             pricing_multiplier: { type: Number, default: 1.0 },
-            base_delivery_fee: { type: Number, default: 15 }
+            base_delivery_fee: { type: Number, default: 15 },
+            price_per_km: { type: Number, default: 2 },
+            grace_margin_percentage: { type: Number, default: 0.05 }
         },
         client: {
             min_order_value: { type: Number, default: 50 },
