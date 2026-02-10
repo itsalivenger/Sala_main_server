@@ -75,11 +75,14 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
     const products = await Product.find({ _id: { $in: productIds } });
 
     items.forEach(item => {
-        subtotal += item.price * item.quantity;
-        totalWeight += (item.unitWeight || 0) * item.quantity;
+        const product = products.find(p => p._id.toString() === (item._id || '').toString());
+        const price = product?.price || item.price || 0;
+        const weight = product?.unitWeight || item.unitWeight || 0;
+
+        subtotal += price * item.quantity;
+        totalWeight += weight * item.quantity;
 
         // Try to get dimensions from item or from fetched product
-        const product = products.find(p => p._id.toString() === (item._id || '').toString());
         const dimensions = item.dimensions || product?.dimensions;
 
         if (dimensions) {
@@ -127,8 +130,8 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
         requiredVehicle,
-        minOrderValue: settings.client.min_order_value,
-        freeDeliveryThreshold: settings.client.free_delivery_threshold,
+        minOrderValue: Number(settings.client.min_order_value || 0),
+        freeDeliveryThreshold: Number(settings.client.free_delivery_threshold || 0),
         // Hidden fields for developer debugging in the checkout screen modal
         _debug: {
             weightSSUs: ssuWeightCount,
@@ -181,18 +184,22 @@ export const createOrder = async (req: Request, res: Response) => {
             const product = products.find(p => p._id.toString() === item._id.toString());
             return {
                 ...item,
+                price: product?.price || item.price,
+                unitWeight: product?.unitWeight || item.unitWeight,
                 image: product?.images && product.images.length > 0 ? product.images[0] : undefined
             };
         });
 
         const pricing = await calculateOrderPricing(enrichedItems, pickupLocation, dropoffLocation);
 
-        // Enforce Minimum Order Value
-        if (pricing.subtotal < (pricing.minOrderValue || 0)) {
-            const minVal = pricing.minOrderValue || 0;
+        // Enforce Minimum Order Value (Numeric comparison)
+        const subtotal = Number(pricing.subtotal);
+        const minVal = Number(pricing.minOrderValue || 0);
+
+        if (subtotal < minVal) {
             return res.status(400).json({
                 success: false,
-                message: `Le montant minimum de la commande est de ${minVal} DH (votre panier est de ${pricing.subtotal} DH)`
+                message: `Le montant minimum de la commande est de ${minVal} DH (votre panier est de ${subtotal} DH)`
             });
         }
 
