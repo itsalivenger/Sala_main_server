@@ -2,9 +2,8 @@ import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import Client from '../../models/Client';
 import Livreur from '../../models/Livreur';
-import mongoose from 'mongoose';
 
-export const seedOrders = async (req: Request, res: Response) => {
+export const seedOrders = async (_req: Request, res: Response) => {
     try {
         // Check and Create Clients if needed
         let clients = await Client.find().limit(5);

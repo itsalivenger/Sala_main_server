@@ -69,7 +69,7 @@ export const getProductDetails = async (req: Request, res: Response) => {
 /**
  * GET /api/client/catalog/categories
  */
-export const getCategories = async (req: Request, res: Response) => {
+export const getCategories = async (_req: Request, res: Response) => {
     try {
         const categories = await Category.find({ isActive: true }).sort({ name: 1 });
         res.json({ success: true, categories });

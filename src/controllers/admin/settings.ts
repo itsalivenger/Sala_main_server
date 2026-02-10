@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Settings from '../../models/Settings';
 
-export const getSettings = async (req: Request, res: Response) => {
+export const getSettings = async (_req: Request, res: Response) => {
     try {
         let settings = await Settings.findOne();
         if (!settings) {

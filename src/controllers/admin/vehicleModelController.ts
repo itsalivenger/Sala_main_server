@@ -6,7 +6,7 @@ import VehicleModel from '../../models/VehicleModel';
  * @route   GET /api/admin/vehicle-models
  * @access  Private/Admin
  */
-export const getVehicleModels = async (req: Request, res: Response) => {
+export const getVehicleModels = async (_req: Request, res: Response) => {
     try {
         const models = await VehicleModel.find().sort({ createdAt: -1 });
         res.status(200).json({

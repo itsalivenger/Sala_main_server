@@ -23,7 +23,7 @@ const router = Router();
 router.use(protect);
 
 // DIAGNOSTIC: Log all requests to this router
-router.use((req, res, next) => {
+router.use((req, _res, next) => {
     console.log(`[ORDERS_ROUTER] ${req.method} ${req.url} (base: ${req.baseUrl})`);
     next();
 });
@@ -31,7 +31,7 @@ router.use((req, res, next) => {
 // ========================================
 // STATIC ROUTES FIRST (no parameters)
 // ========================================
-router.get('/ping-orders', (req, res) => res.json({ success: true, message: 'Livreur orders router is active' }));
+router.get('/ping-orders', (_req, res) => res.json({ success: true, message: 'Livreur orders router is active' }));
 router.get('/available', getAvailableOrders);
 router.get('/my-orders', getMyOrders);
 

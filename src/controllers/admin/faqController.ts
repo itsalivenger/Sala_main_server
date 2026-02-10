@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Faq from '../../models/Faq';
 
-export const getFaqs = async (req: Request, res: Response) => {
+export const getFaqs = async (_req: Request, res: Response) => {
     try {
         const faqs = await Faq.find().sort({ category: 1, order: 1 });
         res.json({ success: true, faqs });
@@ -89,7 +89,7 @@ export const deleteFaq = async (req: Request, res: Response) => {
 };
 
 // Public method to get active FAQs
-export const getPublicFaqs = async (req: Request, res: Response) => {
+export const getPublicFaqs = async (_req: Request, res: Response) => {
     try {
         const faqs = await Faq.find({ isActive: true }).sort({ category: 1, order: 1 });
         res.json({ success: true, faqs });

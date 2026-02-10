@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import Product from '../../models/Product';
-import Category from '../../models/Category';
 import AuditLog from '../../models/AuditLog';
 
 export const getCatalogProducts = async (req: Request, res: Response) => {
@@ -151,7 +150,7 @@ export const getProductById = async (req: Request, res: Response) => {
     }
 };
 
-export const getCategories = async (req: Request, res: Response) => {
+export const getCategories = async (_req: Request, res: Response) => {
     try {
         const categories = await Product.distinct('category');
         res.json({ success: true, categories });

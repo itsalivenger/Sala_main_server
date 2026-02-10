@@ -3,7 +3,7 @@ import Admin from '../../models/Admin';
 import bcrypt from 'bcryptjs';
 
 // Get all admins
-export const getAdmins = async (req: Request, res: Response) => {
+export const getAdmins = async (_req: Request, res: Response) => {
     try {
         const admins = await Admin.find({}).sort({ createdAt: -1 });
 

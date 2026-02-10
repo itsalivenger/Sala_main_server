@@ -8,7 +8,7 @@ import { sendPushNotification } from '../../services/notificationService';
  * @route   GET /api/admin/complaints
  * @access  Private/Admin
  */
-export const getAllComplaints = async (req: Request, res: Response) => {
+export const getAllComplaints = async (_req: Request, res: Response) => {
     try {
         const clients = await Client.find({}).lean();
         const livreurs = await Livreur.find({}).lean();

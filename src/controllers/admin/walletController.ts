@@ -3,12 +3,11 @@ import PlatformSettings from '../../models/PlatformSettings';
 import walletService from '../../services/walletService';
 import WalletTransaction, { TransactionType } from '../../models/WalletTransaction';
 import mongoose from 'mongoose';
-import Wallet from '../../models/Wallet';
 
 /**
  * Get platform settings
  */
-export const getSettings = async (req: Request, res: Response) => {
+export const getSettings = async (_req: Request, res: Response) => {
     try {
         const settings = await walletService.getPlatformSettings();
         res.status(200).json({ success: true, settings });

@@ -4,7 +4,7 @@ import Product from '../../models/Product';
 import AuditLog from '../../models/AuditLog';
 import PlatformSettings from '../../models/PlatformSettings';
 
-export const getCategories = async (req: Request, res: Response) => {
+export const getCategories = async (_req: Request, res: Response) => {
     try {
         const categories = await Category.find().sort({ name: 1 });
         res.json({ success: true, categories });

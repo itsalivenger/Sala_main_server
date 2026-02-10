@@ -27,7 +27,7 @@ export const subscribe = async (req: Request, res: Response) => {
 };
 
 // Get all subscribers (Admin)
-export const getSubscribers = async (req: Request, res: Response) => {
+export const getSubscribers = async (_req: Request, res: Response) => {
     try {
         const subscribers = await Subscriber.find({}).sort({ subscribedAt: -1 });
         res.json(subscribers);

@@ -6,7 +6,7 @@ import Livreur from '../../models/Livreur';
 /**
  * @desc    Get high-level statistics for dashboard
  */
-export const getDashboardStats = async (req: Request, res: Response) => {
+export const getDashboardStats = async (_req: Request, res: Response) => {
     try {
         const totalDeliveries = await Order.countDocuments({ status: 'DELIVERED' });
         const activeClients = await Client.countDocuments({ status: 'Active' });
@@ -41,7 +41,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 /**
  * @desc    Get financial analytics
  */
-export const getDashboardAnalytics = async (req: Request, res: Response) => {
+export const getDashboardAnalytics = async (_req: Request, res: Response) => {
     try {
         const last7Days = [];
         for (let i = 6; i >= 0; i--) {
@@ -72,7 +72,7 @@ export const getDashboardAnalytics = async (req: Request, res: Response) => {
 /**
  * @desc    Get real-time fleet
  */
-export const getDashboardFleet = async (req: Request, res: Response) => {
+export const getDashboardFleet = async (_req: Request, res: Response) => {
     try {
         const onlineLivreurs = await Livreur.find({ isOnline: true }).select('name phoneNumber lastLocation status vehicle').lean();
         const activeOrders = await Order.find({ status: { $in: ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'] } }).select('livreurId pickupLocation dropoffLocation status').lean();
@@ -85,7 +85,7 @@ export const getDashboardFleet = async (req: Request, res: Response) => {
 /**
  * @desc    Get recent activity feed
  */
-export const getRecentActivity = async (req: Request, res: Response) => {
+export const getRecentActivity = async (_req: Request, res: Response) => {
     try {
         const recentOrders = await Order.find({}).sort({ updatedAt: -1 }).limit(10).populate('clientId', 'name').lean();
         const activity = recentOrders.map(o => ({

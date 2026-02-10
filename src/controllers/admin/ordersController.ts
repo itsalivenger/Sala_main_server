@@ -1,19 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import Order from '../../models/Order';
-import Client from '../../models/Client';
-import Livreur from '../../models/Livreur';
-
-// Types for Filters
-interface OrderFilters {
-    status?: string;
-    clientId?: string;
-    livreurId?: string;
-    city?: string;
-    startDate?: Date;
-    endDate?: Date;
-    paymentStatus?: string;
-}
 
 // === GET ALL ORDERS (Paginated & Filtered) ===
 export const getOrders = async (req: Request, res: Response) => {

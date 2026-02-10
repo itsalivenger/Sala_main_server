@@ -7,7 +7,7 @@ import Order from '../../models/Order';
  * @route   GET /api/admin/clients
  * @access  Private/Admin
  */
-export const getAllClients = async (req: Request, res: Response) => {
+export const getAllClients = async (_req: Request, res: Response) => {
     try {
         const clients = await Client.find({}).sort({ createdAt: -1 }).lean();
 

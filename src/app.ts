@@ -3,7 +3,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import path from 'path';
 import connectDB from './config/db';
 
 // Route Imports
@@ -48,7 +47,7 @@ const app: Application = express();
 connectDB().catch(err => console.error('[DB_INITIAL_CONNECT_ERROR]', err));
 
 // DB Connection Guard Middleware (Ensures DB is ready before any route is processed)
-app.use(async (req: Request, res: Response, next: NextFunction) => {
+app.use(async (_req: Request, res: Response, next: NextFunction) => {
     try {
         await connectDB();
         next();
@@ -140,14 +139,14 @@ app.use('/api/client/notifications', clientNotificationRoutes);
 // Note: Handled by Cloudinary. Font files are in public root if needed via path.join.
 
 // --- HEALTH CHECK ---
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
     res.json({
         message: 'SALA Main Server - Operations Layer',
         status: 'active'
     });
 });
 
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'OK' });
 });
 
@@ -158,7 +157,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // --- ERROR HANDLER ---
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('[SALA_ERROR] Full error:', err);
     console.error('[SALA_ERROR] Stack:', err?.stack);
     res.status(err.status || 500).json({

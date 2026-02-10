@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import walletService from '../../services/walletService';
-import WalletTransaction, { TransactionType } from '../../models/WalletTransaction';
+import WalletTransaction from '../../models/WalletTransaction';
 import mongoose from 'mongoose';
-import Wallet from '../../models/Wallet';
 
 /**
  * Get current livreur's wallet summary (balance + recent transactions)

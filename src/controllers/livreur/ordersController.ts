@@ -145,7 +145,7 @@ export const acceptOrder = async (req: Request, res: Response) => {
             session.endSession();
             return res.status(403).json({
                 success: false,
-                message: `Vous avez atteint la limite maximale de commandes actives (${maxActiveOrders}). Veuillez en livrer une avant d'en accepter une autre.`
+                message: `Vous avez atteint la limite maximale de commandes actives(${maxActiveOrders}).Veuillez en livrer une avant d'en accepter une autre.`
             });
         }
 
@@ -279,7 +279,6 @@ export const rejectOrder = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { reason } = req.body;
-        const livreurId = (req as any).user?.id;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID de commande invalide.' });

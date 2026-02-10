@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import PlatformSettings, { IPlatformSettings } from '../models/PlatformSettings';
 import Wallet, { IWallet } from '../models/Wallet';
 import WalletTransaction, { TransactionType } from '../models/WalletTransaction';
-import Order, { IOrder } from '../models/Order';
+import Order from '../models/Order';
 
 class WalletService {
     /**

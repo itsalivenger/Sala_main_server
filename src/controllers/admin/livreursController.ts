@@ -11,7 +11,7 @@ import WalletTransaction from '../../models/WalletTransaction';
  * @route   GET /api/admin/livreurs
  * @access  Private/Admin
  */
-export const getAllLivreurs = async (req: Request, res: Response) => {
+export const getAllLivreurs = async (_req: Request, res: Response) => {
     try {
         const livreurs = await Livreur.find({}).sort({ createdAt: -1 }).lean();
 

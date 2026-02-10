@@ -68,7 +68,7 @@ export const login = async (req: Request, res: Response) => {
 };
 
 // Logout
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (_req: Request, res: Response) => {
     res.clearCookie('admin_token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',

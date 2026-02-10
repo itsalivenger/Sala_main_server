@@ -19,7 +19,7 @@ export const submitEnquiry = async (req: any, res: any) => {
 };
 
 // Admin: Get all enquiries
-export const getEnquiries = async (req: any, res: any) => {
+export const getEnquiries = async (_req: any, res: any) => {
     try {
         const enquiries = await Enquiry.find().sort({ createdAt: -1 });
         res.json({ success: true, enquiries });

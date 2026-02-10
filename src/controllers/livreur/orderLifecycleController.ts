@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import Order from '../../models/Order';
-import Livreur from '../../models/Livreur';
 import mongoose from 'mongoose';
 import walletService from '../../services/walletService';
 

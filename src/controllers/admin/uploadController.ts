@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs';
 import multer from 'multer';
 
 // Extend Express Request to include multer properties
@@ -15,7 +14,7 @@ import { storage } from '../../config/cloudinary';
 export const uploadMiddleware = multer({
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
         const allowedTypes = /jpeg|jpg|png|gif|pdf|webp/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
