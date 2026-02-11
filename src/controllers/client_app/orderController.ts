@@ -365,12 +365,12 @@ export const getOrderMapData = async (req: Request, res: Response) => {
             orderId: order._id,
             status: order.status,
             updatedAt: order.updatedAt,
-            pickup: order.pickupLocation ? {
+            pickup: (order.pickupLocation && typeof order.pickupLocation.lat === 'number' && typeof order.pickupLocation.lng === 'number') ? {
                 lat: order.pickupLocation.lat,
                 lng: order.pickupLocation.lng,
-                address: order.pickupLocation.address // safe to share address? yes
+                address: order.pickupLocation.address
             } : null,
-            delivery: order.dropoffLocation ? {
+            delivery: (order.dropoffLocation && typeof order.dropoffLocation.lat === 'number' && typeof order.dropoffLocation.lng === 'number') ? {
                 lat: order.dropoffLocation.lat,
                 lng: order.dropoffLocation.lng,
                 address: order.dropoffLocation.address
