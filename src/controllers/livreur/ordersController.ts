@@ -19,20 +19,43 @@ export const getAvailableOrders = async (req: Request, res: Response) => {
             return res.status(401).json({ success: false, message: 'Non autorisé.' });
         }
 
+        console.log(`[BACKEND_FILTER_CHECK] Fetching orders for livreur: ${livreurId}`);
+
         // Pagination parameters
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
         const skip = (page - 1) * limit;
 
+        // Fetch livreur to get vehicle type
+        const livreur = await Livreur.findById(livreurId);
+        if (!livreur) {
+            return res.status(404).json({ success: false, message: 'Livreur non trouvé.' });
+        }
+
+        const vehicleType = livreur.vehicle?.type || 'moto';
+
+        // Define vehicle compatibility hierarchy
+        const vehicleMap: Record<string, string[]> = {
+            'moto': ['moto'],
+            'petite_vehicule': ['moto', 'small_car'],
+            'grande_vehicule': ['moto', 'small_car', 'large_car']
+        };
+
+        const compatibleVehicles = vehicleMap[vehicleType] || ['moto'];
+        console.log(`[BACKEND_FILTER_CHECK] Livreur Vehicle: ${vehicleType}, Compatible with: ${compatibleVehicles.join(', ')}`);
+
         // Build query for available orders
         const query = {
             status: 'SEARCHING_FOR_LIVREUR',
+            requiredVehicle: { $in: compatibleVehicles },
             $or: [
                 { eligibleLivreurs: { $in: [new mongoose.Types.ObjectId(livreurId)] } },
                 { eligibleLivreurs: { $size: 0 } },
                 { eligibleLivreurs: { $exists: false } }
             ]
         };
+
+        console.log(`[BACKEND_FILTER_CHECK] Query JSON: ${JSON.stringify(query)}`);
 
         // Get total count for pagination
         const total = await Order.countDocuments(query);

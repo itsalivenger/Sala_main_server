@@ -141,6 +141,11 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
 
     const total = subtotal + deliveryFee;
 
+    // Calculate Platform Margin and Livreur Net
+    const platformMargin = parseFloat((deliveryFee * (settings.platform_margin_percentage / 100)).toFixed(2));
+    const livreurNet = parseFloat((deliveryFee - platformMargin).toFixed(2));
+    const tax = parseFloat((subtotal * (settings.tax_percentage / 100)).toFixed(2));
+
     // Determine Required Vehicle (For internal tracking, though simplified)
     let requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto';
     if (ssuCount > 2) requiredVehicle = 'large_car';
@@ -154,6 +159,9 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
         distance: parseFloat(finalDistance.toFixed(2)),
         deliveryFee: parseFloat(deliveryFee.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
+        platformMargin,
+        livreurNet,
+        tax,
         requiredVehicle,
         minOrderValue: Number(settings.client.min_order_value || 0),
         freeDeliveryThreshold: Number(settings.client.free_delivery_threshold || 0),
@@ -168,7 +176,9 @@ export const calculateOrderPricing = async (items: any[], pickup?: any, dropoff?
             pricePerKm: price_per_km,
             graceMargin: grace_margin_percentage,
             distanceCalculated: finalDistance,
-            baseWithDistanceFee: baseWithDistance
+            baseWithDistanceFee: baseWithDistance,
+            marginRate: settings.platform_margin_percentage,
+            taxRate: settings.tax_percentage
         }
     };
 };
@@ -243,8 +253,7 @@ export const createOrder = async (req: Request, res: Response) => {
             pickupLocation,
             dropoffLocation,
             pricing: {
-                ...pricing,
-                livreurNet: pricing.deliveryFee // In SSU logic, delivery fee goes to driver for now
+                ...pricing
             },
             paymentMethod: paymentMethod || 'Cash',
             paymentStatus: paymentMethod === 'Card' ? 'Authorized' : 'Pending',
