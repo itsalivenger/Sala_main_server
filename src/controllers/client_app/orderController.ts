@@ -15,24 +15,47 @@ import { getRoadDistance, getHaversineDistance } from '../../utils/routingUtils'
 /**
  * Find the closest online and available livreurs
  */
-const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, limit: number = 3) => {
+/**
+ * Find the closest online and available livreurs
+ * Filters by vehicle type compatibility
+ */
+const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, requiredVehicle: 'moto' | 'small_car' | 'large_car' = 'moto', limit: number = 3) => {
     try {
-        // 1. Find livreurs who are currently assigned to active orders to exclude them
+        // 1. Determine allowed vehicle types based on order requirement
+        let allowedTypes: string[] = [];
+
+        // Mapping: Order Requirement -> Livreur Vehicle Types (moto, petite_vehicule, grande_vehicule)
+        // logic: Larger vehicles can take smaller orders, but smaller vehicles cannot take larger orders.
+        switch (requiredVehicle) {
+            case 'large_car':
+                allowedTypes = ['grande_vehicule'];
+                break;
+            case 'small_car':
+                allowedTypes = ['petite_vehicule', 'grande_vehicule'];
+                break;
+            case 'moto':
+            default:
+                allowedTypes = ['moto', 'petite_vehicule', 'grande_vehicule'];
+                break;
+        }
+
+        // 2. Find livreurs who are currently assigned to active orders to exclude them
         const busyLivreurs = await Order.find({
             status: { $in: ['ASSIGNED', 'SHOPPING', 'PICKED_UP', 'IN_TRANSIT'] },
             livreurId: { $exists: true }
         }).distinct('livreurId');
 
-        // 2. Query for online, approved livreurs who are not busy
+        // 3. Query for online, approved livreurs who are not busy AND match vehicle type
         const availableLivreurs = await Livreur.find({
             isOnline: true,
             status: 'Approved',
             _id: { $nin: busyLivreurs },
+            'vehicle.type': { $in: allowedTypes },
             'lastLocation.lat': { $exists: true },
             'lastLocation.lng': { $exists: true }
-        }).select('_id lastLocation name');
+        }).select('_id lastLocation name vehicle');
 
-        // 3. Calculate distances and sort (Using Haversine for initial ranking to avoid too many API calls)
+        // 4. Calculate distances and sort (Using Haversine for initial ranking to avoid too many API calls)
         const rankedLivreurs = availableLivreurs
             .map(livreur => {
                 const distance = getHaversineDistance(
@@ -46,7 +69,6 @@ const getClosestLivreurs = async (pickupLocation: { lat: number, lng: number }, 
             .sort((a, b) => a.distance - b.distance)
             .slice(0, limit);
 
-        // Result logged only in error case or for critical debugging (removed for production feel)
         return rankedLivreurs.map(r => r.id);
     } catch (error) {
         console.error('[OrderController] Error finding closest livreurs:', error);
@@ -222,15 +244,15 @@ export const createOrder = async (req: Request, res: Response) => {
         const pricing = await calculateOrderPricing(enrichedItems, pickupLocation, dropoffLocation);
 
         // Enforce Minimum Order Value (Numeric comparison)
-        const subtotal = Number(pricing.subtotal);
-        const minVal = Number(pricing.minOrderValue || 0);
+        // const subtotal = Number(pricing.subtotal);
+        // const minVal = Number(pricing.minOrderValue || 0);
 
-        if (subtotal < minVal) {
-            return res.status(400).json({
-                success: false,
-                message: `Le montant minimum de la commande est de ${minVal} DH (votre panier est de ${subtotal} DH)`
-            });
-        }
+        // if (subtotal < minVal) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: `Le montant minimum de la commande est de ${minVal} DH (votre panier est de ${subtotal} DH)`
+        //     });
+        // }
 
         const newOrder = new Order({
             clientId,
@@ -266,7 +288,10 @@ export const createOrder = async (req: Request, res: Response) => {
         });
 
         // Find 3 closest online and available drivers
-        const top3Ids = await getClosestLivreurs(pickupLocation);
+        // Use pickupLocation if available, otherwise fallback to dropoffLocation
+        const locationForSearch = pickupLocation || dropoffLocation;
+        const top3Ids = locationForSearch ? await getClosestLivreurs(locationForSearch) : [];
+
         newOrder.eligibleLivreurs = top3Ids;
 
         // Trigger Push Notifications to these specific drivers
