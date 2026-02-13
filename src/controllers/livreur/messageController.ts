@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Order from '../../models/Order';
+import Client from '../../models/Client';
+import { sendPushNotification } from '../../services/notificationService';
 
 /**
  * @route   POST /api/livreur/orders/:id/messages
@@ -44,6 +46,22 @@ export const sendMessage = async (req: Request, res: Response) => {
             message: 'Message envoyé',
             chatMessages: order.chatMessages
         });
+
+        // Background: Send Push Notification to Client
+        try {
+            const client = await Client.findById(order.clientId).select('pushToken name');
+            if (client?.pushToken) {
+                const livreurName = (req as any).user.name || 'Votre livreur';
+                await sendPushNotification(
+                    client.pushToken,
+                    `Message de ${livreurName}`,
+                    text.trim(),
+                    { orderId: id, type: 'CHAT_MESSAGE' }
+                );
+            }
+        } catch (pushError) {
+            console.error('[PUSH] Chat message notification failed:', pushError);
+        }
 
     } catch (error) {
         console.error('[Livreur sendMessage] Error:', error);

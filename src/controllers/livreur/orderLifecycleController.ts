@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import Order from '../../models/Order';
 import mongoose from 'mongoose';
+import Client from '../../models/Client';
 import walletService from '../../services/walletService';
+import { sendPushNotification } from '../../services/notificationService';
 
 /**
  * @desc    Mark order as shopping (for market/shopping orders)
@@ -59,6 +61,20 @@ export const markOrderShopping = async (req: Request, res: Response) => {
             message: 'Statut mis à jour: En cours d\'achats.',
             order
         });
+
+        // Background: Push Notification
+        try {
+            const client = await Client.findById(order.clientId).select('pushToken');
+            if (client?.pushToken) {
+                await sendPushNotification(
+                    client.pushToken,
+                    'Mise à jour de votre commande',
+                    'Votre livreur a commencé les achats.'
+                );
+            }
+        } catch (pushErr) {
+            console.error('[PUSH] Shopping notification failed:', pushErr);
+        }
     } catch (error: any) {
         await session.abortTransaction();
         console.error('[LIVREUR_ORDERS] Shopping Error:', error);
@@ -125,6 +141,20 @@ export const markOrderPickedUp = async (req: Request, res: Response) => {
             message: 'Commande marquée comme récupérée.',
             order
         });
+
+        // Background: Push Notification
+        try {
+            const client = await Client.findById(order.clientId).select('pushToken');
+            if (client?.pushToken) {
+                await sendPushNotification(
+                    client.pushToken,
+                    'Commande en route',
+                    'Votre livreur a récupéré votre commande.'
+                );
+            }
+        } catch (pushErr) {
+            console.error('[PUSH] Pickup notification failed:', pushErr);
+        }
     } catch (error: any) {
         await session.abortTransaction();
         console.error('[LIVREUR_ORDERS] Pickup Error:', error);
@@ -190,6 +220,20 @@ export const markOrderInTransit = async (req: Request, res: Response) => {
             message: 'Commande marquée en transit.',
             order
         });
+
+        // Background: Push Notification
+        try {
+            const client = await Client.findById(order.clientId).select('pushToken');
+            if (client?.pushToken) {
+                await sendPushNotification(
+                    client.pushToken,
+                    'Livraison en cours',
+                    'Votre livreur arrive à votre destination.'
+                );
+            }
+        } catch (pushErr) {
+            console.error('[PUSH] In-transit notification failed:', pushErr);
+        }
     } catch (error: any) {
         await session.abortTransaction();
         console.error('[LIVREUR_ORDERS] In-Transit Error:', error);
@@ -279,6 +323,20 @@ export const deliverOrder = async (req: Request, res: Response) => {
             order,
             earnings: order.pricing.livreurNet
         });
+
+        // Background: Push Notification
+        try {
+            const client = await Client.findById(order.clientId).select('pushToken');
+            if (client?.pushToken) {
+                await sendPushNotification(
+                    client.pushToken,
+                    'Commande livrée 🏁',
+                    'Merci d\'avoir choisi SALA ! Votre commande est arrivée.'
+                );
+            }
+        } catch (pushErr) {
+            console.error('[PUSH] Delivery notification failed:', pushErr);
+        }
     } catch (error: any) {
         await session.abortTransaction();
         console.error('[LIVREUR_ORDERS] Deliver Error:', error);
