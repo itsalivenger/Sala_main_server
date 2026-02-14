@@ -49,15 +49,29 @@ export const sendMessage = async (req: Request, res: Response) => {
 
         // Background: Send Push Notification to Client
         try {
-            const client = await Client.findById(order.clientId).select('pushToken name');
-            if (client?.pushToken) {
+            const client = await Client.findById(order.clientId).select('pushToken name notifications');
+            if (client) {
                 const livreurName = (req as any).user.name || 'Votre livreur';
-                await sendPushNotification(
-                    client.pushToken,
-                    `Message de ${livreurName}`,
-                    text.trim(),
-                    { orderId: id, type: 'CHAT_MESSAGE' }
-                );
+                const title = `Message de ${livreurName}`;
+
+                // Persist notification
+                client.notifications.push({
+                    title,
+                    message: text.trim(),
+                    type: 'General',
+                    isRead: false,
+                    createdAt: new Date()
+                });
+                await client.save();
+
+                if (client.pushToken) {
+                    await sendPushNotification(
+                        client.pushToken,
+                        title,
+                        text.trim(),
+                        { orderId: id, type: 'CHAT_MESSAGE' }
+                    );
+                }
             }
         } catch (pushError) {
             console.error('[PUSH] Chat message notification failed:', pushError);

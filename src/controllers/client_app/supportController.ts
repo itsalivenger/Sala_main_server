@@ -11,6 +11,8 @@ export const createReclamation = async (req: Request, res: Response) => {
         const { category, subject, message, orderId } = req.body;
         const userId = (req as any).user?.id;
 
+        console.log('[SupportController] Received payload:', { category, subject, message, orderId, userId: userId });
+
         if (!message) {
             return res.status(400).json({ success: false, message: 'Le message est obligatoire.' });
         }
