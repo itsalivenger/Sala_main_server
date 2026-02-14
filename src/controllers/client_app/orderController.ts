@@ -630,6 +630,31 @@ export const sendOrderMessage = async (req: Request, res: Response) => {
 
         await order.save();
 
+        // Background: Send Push Notification to Livreur
+        try {
+            if (order.livreurId) {
+                const livreur = await Livreur.findById(order.livreurId).select('pushToken');
+                if (livreur?.pushToken) {
+                    const client = await Client.findById(clientId).select('name');
+                    const clientName = client?.name || 'Votre client';
+
+                    await sendPushNotification(
+                        livreur.pushToken,
+                        `Message de ${clientName}`,
+                        text.trim(),
+                        {
+                            orderId: order._id.toString(),
+                            type: 'CHAT_MESSAGE',
+                            sender: 'Client'
+                        }
+                    );
+                    console.log(`[PUSH] Sent chat notification to livreur ${order.livreurId} (fallback)`);
+                }
+            }
+        } catch (pushError) {
+            console.error('[PUSH] Chat message notification failed (fallback):', pushError);
+        }
+
         res.status(200).json({
             success: true,
             message: 'Message envoyé.',
