@@ -64,13 +64,24 @@ export const markOrderShopping = async (req: Request, res: Response) => {
 
         // Background: Push Notification
         try {
-            const client = await Client.findById(order.clientId).select('pushToken');
-            if (client?.pushToken) {
-                await sendPushNotification(
-                    client.pushToken,
-                    'Mise à jour de votre commande',
-                    'Votre livreur a commencé les achats.'
-                );
+            const client = await Client.findById(order.clientId).select('pushToken notifications');
+            if (client) {
+                const title = 'Mise à jour de votre commande';
+                const message = 'Votre livreur a commencé les achats.';
+
+                // Persist notification
+                client.notifications.push({
+                    title,
+                    message,
+                    type: 'Order',
+                    isRead: false,
+                    createdAt: new Date()
+                });
+                await client.save();
+
+                if (client.pushToken) {
+                    await sendPushNotification(client.pushToken, title, message);
+                }
             }
         } catch (pushErr) {
             console.error('[PUSH] Shopping notification failed:', pushErr);
@@ -144,13 +155,24 @@ export const markOrderPickedUp = async (req: Request, res: Response) => {
 
         // Background: Push Notification
         try {
-            const client = await Client.findById(order.clientId).select('pushToken');
-            if (client?.pushToken) {
-                await sendPushNotification(
-                    client.pushToken,
-                    'Commande en route',
-                    'Votre livreur a récupéré votre commande.'
-                );
+            const client = await Client.findById(order.clientId).select('pushToken notifications');
+            if (client) {
+                const title = 'Commande en route';
+                const message = 'Votre livreur a récupéré votre commande.';
+
+                // Persist notification
+                client.notifications.push({
+                    title,
+                    message,
+                    type: 'Order',
+                    isRead: false,
+                    createdAt: new Date()
+                });
+                await client.save();
+
+                if (client.pushToken) {
+                    await sendPushNotification(client.pushToken, title, message);
+                }
             }
         } catch (pushErr) {
             console.error('[PUSH] Pickup notification failed:', pushErr);
@@ -223,13 +245,24 @@ export const markOrderInTransit = async (req: Request, res: Response) => {
 
         // Background: Push Notification
         try {
-            const client = await Client.findById(order.clientId).select('pushToken');
-            if (client?.pushToken) {
-                await sendPushNotification(
-                    client.pushToken,
-                    'Livraison en cours',
-                    'Votre livreur arrive à votre destination.'
-                );
+            const client = await Client.findById(order.clientId).select('pushToken notifications');
+            if (client) {
+                const title = 'Livraison en cours';
+                const message = 'Votre livreur arrive à votre destination.';
+
+                // Persist notification
+                client.notifications.push({
+                    title,
+                    message,
+                    type: 'Order',
+                    isRead: false,
+                    createdAt: new Date()
+                });
+                await client.save();
+
+                if (client.pushToken) {
+                    await sendPushNotification(client.pushToken, title, message);
+                }
             }
         } catch (pushErr) {
             console.error('[PUSH] In-transit notification failed:', pushErr);
@@ -326,13 +359,24 @@ export const deliverOrder = async (req: Request, res: Response) => {
 
         // Background: Push Notification
         try {
-            const client = await Client.findById(order.clientId).select('pushToken');
-            if (client?.pushToken) {
-                await sendPushNotification(
-                    client.pushToken,
-                    'Commande livrée 🏁',
-                    'Merci d\'avoir choisi SALA ! Votre commande est arrivée.'
-                );
+            const client = await Client.findById(order.clientId).select('pushToken notifications');
+            if (client) {
+                const title = 'Commande livrée 🏁';
+                const message = 'Merci d\'avoir choisi SALA ! Votre commande est arrivée.';
+
+                // Persist notification
+                client.notifications.push({
+                    title,
+                    message,
+                    type: 'Order',
+                    isRead: false,
+                    createdAt: new Date()
+                });
+                await client.save();
+
+                if (client.pushToken) {
+                    await sendPushNotification(client.pushToken, title, message);
+                }
             }
         } catch (pushErr) {
             console.error('[PUSH] Delivery notification failed:', pushErr);
