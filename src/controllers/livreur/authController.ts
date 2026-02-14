@@ -58,13 +58,12 @@ export const login = async (req: Request, res: Response) => {
         // Send OTP via SMS (Twilio or mock)
         await smsService.sendOTP(phoneNumber, otp, 'Livreur Login');
 
-        const isDev = process.env.NODE_ENV?.trim().toLowerCase() === 'development';
-        console.log(`[LIVREUR AUTH] OTP Generated: ${otp} (NODE_ENV: ${process.env.NODE_ENV}, isDev: ${isDev})`);
-
+        console.log(`[LIVREUR AUTH] OTP Generated: ${otp} (NODE_ENV: ${process.env.NODE_ENV})`);
+        // dev_otp returned always for now as requested by user for production-like env testing
         res.status(200).json({
             success: true,
             message: 'Code de vérification envoyé',
-            ...(isDev && { dev_otp: otp })
+            dev_otp: otp
         });
     } catch (error) {
         console.error('Livreur Login error:', error);
@@ -200,13 +199,12 @@ export const register = async (req: Request, res: Response) => {
         // Send OTP via SMS (Twilio or mock)
         await smsService.sendOTP(phoneNumber, otp, 'Livreur Registration');
 
-        const isDev = process.env.NODE_ENV?.trim().toLowerCase() === 'development';
-        console.log(`[LIVREUR AUTH] Register OTP Generated: ${otp} (NODE_ENV: ${process.env.NODE_ENV}, isDev: ${isDev})`);
-
+        console.log(`[LIVREUR AUTH] Register OTP Generated: ${otp} (NODE_ENV: ${process.env.NODE_ENV})`);
+        // dev_otp returned always for now as requested by user for production-like env testing
         res.status(200).json({
             success: true,
             message: 'Code d\'inscription envoyé',
-            ...(isDev && { dev_otp: otp })
+            dev_otp: otp
         });
     } catch (error) {
         console.error('Livreur Register error:', error);
@@ -499,6 +497,7 @@ export const getProfile = async (req: Request, res: Response) => {
                 vehicle: livreur.vehicle,
                 documents: livreur.documents,
                 selfie: livreur.selfie,
+                notifications: livreur.notifications
             }
         });
     } catch (error) {
