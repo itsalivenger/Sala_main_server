@@ -69,31 +69,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-    'https://sala-site-c9eorex9w-itsalivengers-projects.vercel.app',
-    'https://sala-site-itsalivengers-projects.vercel.app',
-    'https://sala-site-xi.vercel.app'
-];
-if (process.env.ALLOWED_ORIGINS) {
-    allowedOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim()));
-}
-
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.some(allowed => origin === allowed || (allowed.endsWith('/') && origin === allowed.slice(0, -1)))) {
-            callback(null, true);
-        } else {
-            console.warn(`[SALA_CORS] Blocked origin: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: true, // Reflects the request origin, effectively allowing all
     credentials: true,
 }));
 
